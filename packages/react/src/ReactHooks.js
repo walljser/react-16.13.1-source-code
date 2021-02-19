@@ -21,7 +21,9 @@ type BasicStateAction<S> = (S => S) | S;
 type Dispatch<A> = A => void;
 
 function resolveDispatcher() {
+  // 在ReactDom进行渲染的时候，才会调用dispatcher
   const dispatcher = ReactCurrentDispatcher.current;
+  // 看警告内容很熟悉，不正确使用hooks时报警
   invariant(
     dispatcher !== null,
     'Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for' +
@@ -75,6 +77,7 @@ export function useContext<T>(
   return dispatcher.useContext(Context, unstable_observedBits);
 }
 
+// 调用dispatcher上对应的useState方法
 export function useState<S>(
   initialState: (() => S) | S,
 ): [S, Dispatch<BasicStateAction<S>>] {
@@ -96,6 +99,7 @@ export function useRef<T>(initialValue: T): {|current: T|} {
   return dispatcher.useRef(initialValue);
 }
 
+// 和useState一样，调用dispatcher上对应的useEffect方法
 export function useEffect(
   create: () => (() => void) | void,
   deps: Array<mixed> | void | null,

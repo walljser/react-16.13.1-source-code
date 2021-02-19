@@ -184,6 +184,8 @@ let workInProgressHook: Hook | null = null;
 // does not get reset if we do another render pass; only when we're completely
 // finished evaluating this component. This is an optimization so we know
 // whether we need to clear render phase updates after a throw.
+// 注：
+// 判断在执行 render 过程中，是否有预定的更新
 let didScheduleRenderPhaseUpdate: boolean = false;
 
 const RE_RENDER_LIMIT = 25;

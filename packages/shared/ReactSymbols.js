@@ -11,6 +11,12 @@
 // nor polyfill, then a plain number is used for performance.
 const hasSymbol = typeof Symbol === 'function' && Symbol.for;
 
+// 使用symbol来标记每一个react元素
+
+// symbol定义逻辑：根据key找到注册表中对应的symbol，如果注册表中没有，就全局注册一个
+// 所有key的前缀加上react，防止冲突
+// hasSymbol是兼容性写法
+
 export const REACT_ELEMENT_TYPE = hasSymbol
   ? Symbol.for('react.element')
   : 0xeac7;
