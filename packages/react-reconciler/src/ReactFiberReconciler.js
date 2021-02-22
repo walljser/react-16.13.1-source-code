@@ -222,6 +222,11 @@ export function createContainer(
   hydrate: boolean,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
 ): OpaqueRoot {
+  // containerInfo => <div id="root"></div>
+  // tag => 0
+  // hydrate => false
+  // hydrateCallbacks => null
+  // 这里的参数备注都忽略了服务端渲染相关内容
   return createFiberRoot(containerInfo, tag, hydrate, hydrationCallbacks);
 }
 

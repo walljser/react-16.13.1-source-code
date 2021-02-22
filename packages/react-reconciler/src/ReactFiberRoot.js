@@ -29,15 +29,21 @@ import {initializeUpdateQueue} from './ReactUpdateQueue';
 
 export type PendingInteractionMap = Map<ExpirationTime, Set<Interaction>>;
 
+// FiberRoot数据结构
 type BaseFiberRootProperties = {|
   // The type of root (legacy, batched, concurrent, etc.)
   tag: RootTag,
 
   // Any additional information from the host associated with this root.
+  // root节点
+  // 即：ReactDom.render(<App />, document.getElementById('root'))中的第二个参数，container
   containerInfo: any,
+
   // Used only by persistent updates.
   pendingChildren: any,
+
   // The currently active root fiber. This is the mutable root of the tree.
+  // 当前应用对应的Fiber对象，是 Root Fiber
   current: Fiber,
 
   pingCache:
@@ -103,6 +109,7 @@ export type FiberRoot = {
   ...
 };
 
+// 创建FiberRoot对象
 function FiberRootNode(containerInfo, tag, hydrate) {
   this.tag = tag;
   this.current = null;
@@ -134,12 +141,24 @@ function FiberRootNode(containerInfo, tag, hydrate) {
   }
 }
 
+// 创建根节点对应的 fiber 对象， FiberRoot
+// FiberRoot:
+// * 整个应用的七点
+// * 包含应用挂载的目标节点，
+// * 记录整个应用更新过程的各种信息
 export function createFiberRoot(
   containerInfo: any,
   tag: RootTag,
   hydrate: boolean,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
 ): FiberRoot {
+  // containerInfo => <div id="root"></div>
+  // tag => 0
+  // hydrate => false
+  // hydrateCallbacks => null
+  // 这里的参数备注都忽略了服务端渲染相关内容
+
+  // 创建FiberRoot对象
   const root: FiberRoot = (new FiberRootNode(containerInfo, tag, hydrate): any);
   if (enableSuspenseCallback) {
     root.hydrationCallbacks = hydrationCallbacks;
@@ -147,7 +166,13 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
+  // 创建根节点对应的rootFiber
   const uninitializedFiber = createHostRootFiber(tag);
+  // 为 FiberRoot 添加current属性为 rootFiber
+  // 注意：这里的root是FiberRoot对象，uninitializedFiber是Fiber对象
+  // root: FiberRoot
+  // uninitlizedFiber: Fiber
+  // FiberRoot和rootFiber的关系，FirberRoot.current = rootFiber
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
 

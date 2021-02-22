@@ -96,10 +96,10 @@ export {
   useReducer,
   useRef,
   useState,
-  REACT_FRAGMENT_TYPE as Fragment,
-  REACT_PROFILER_TYPE as Profiler,
-  REACT_STRICT_MODE_TYPE as StrictMode,
-  REACT_SUSPENSE_TYPE as Suspense,
+  REACT_FRAGMENT_TYPE as Fragment, // React原生组件
+  REACT_PROFILER_TYPE as Profiler, // React原生组件
+  REACT_STRICT_MODE_TYPE as StrictMode, // React原生组件
+  REACT_SUSPENSE_TYPE as Suspense, // React原生组件
   createElement,
   cloneElement,
   isValidElement,
@@ -110,7 +110,7 @@ export {
   // Concurrent Mode
   useTransition,
   useDeferredValue,
-  REACT_SUSPENSE_LIST_TYPE as SuspenseList,
+  REACT_SUSPENSE_LIST_TYPE as SuspenseList, // React原生组件
   withSuspenseConfig as unstable_withSuspenseConfig,
   // enableBlocksAPI
   block,

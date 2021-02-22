@@ -31,7 +31,7 @@ import {
   injectIntoDevTools,
   flushPassiveEffects,
   IsThisRendererActing,
-  attemptSynchronousHydration,
+  ,
   attemptUserBlockingHydration,
   attemptContinuousHydration,
   attemptHydrationAtCurrentPriority,
@@ -93,6 +93,7 @@ if (__DEV__) {
     typeof Set.prototype.clear !== 'function' ||
     typeof Set.prototype.forEach !== 'function'
   ) {
+    // 依赖检查
     console.error(
       'React depends on Map and Set built-in types. Make sure that you load a ' +
         'polyfill in older browsers. https://fb.me/react-polyfills',

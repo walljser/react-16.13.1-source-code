@@ -112,10 +112,13 @@ function createRootImpl(
   tag: RootTag,
   options: void | RootOptions,
 ) {
+  // container => <div id="root"></div>
+  // tag => 0 (LegacyRoot)
+  // options => undefined
   // Tag is either LegacyRoot or Concurrent Root
-  const hydrate = options != null && options.hydrate === true;
+  const hydrate = options != null && options.hydrate === true; // 服务端渲染相关
   const hydrationCallbacks =
-    (options != null && options.hydrationOptions) || null;
+    (options != null && options.hydrationOptions) || null; // 服务端渲染相关
   const root = createContainer(container, tag, hydrate, hydrationCallbacks);
   markContainerAsRoot(root.current, container);
   if (hydrate && tag !== LegacyRoot) {
