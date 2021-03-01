@@ -108,13 +108,27 @@ import invariant from 'shared/invariant';
 import {getCurrentPriorityLevel} from './SchedulerWithReactIntegration';
 
 export type Update<State> = {|
+  // 过期时间
   expirationTime: ExpirationTime,
+
+  //
   suspenseConfig: null | SuspenseConfig,
 
+  // 下方的代码有这些tag。
+  // export const UpdateState = 0
+  // export const ReplaceState = 1
+  // export const ForceUpdate = 2
+  // export const CaptureUpdate = 3
+  // 指定更新的类型，总共为4种
   tag: 0 | 1 | 2 | 3,
+
+  // 更新内容：比如`setState`接受的第一个参数
   payload: any,
+
+  // 更新回调，`setState`和`render`都有
   callback: (() => mixed) | null,
 
+  // 指向下一个更新
   next: Update<State>,
 
   // DEV only
@@ -123,10 +137,17 @@ export type Update<State> = {|
 
 type SharedQueue<State> = {|pending: Update<State> | null|};
 
+// 单项链表，用来存放update，
+// BaseQueue和shared(pendingQueue)均存储单向链表的尾结点
 export type UpdateQueue<State> = {|
+  // 先前的状态，作为payload函数的preState参数
+  // 每次的更新都是在这个baseState基础上进行更新
   baseState: State,
+  // 更新队列，单链表，
   baseQueue: Update<State> | null,
+  // 以pending属性存储待执行的更新任务 Update 队列，尾节点存储形式
   shared: SharedQueue<State>,
+  // side-effects队列
   effects: Array<Update<State>> | null,
 |};
 
@@ -151,6 +172,7 @@ if (__DEV__) {
   };
 }
 
+// 初始化更新队列
 export function initializeUpdateQueue<State>(fiber: Fiber): void {
   const queue: UpdateQueue<State> = {
     baseState: fiber.memoizedState,

@@ -233,7 +233,7 @@ function legacyRenderSubtreeIntoContainer(
     // 初始化渲染
     // 调用legacyCreateRootFromDOMContainer创建root对象
     // 为container容器添加_reactRootContainer对象属性
-    // legacyCreateRootFromDOMContainer -> createLegacyRoot -> new ReactDOMBlockingRoot -> this._internalRoot = createRootImpl
+    // legacyCreateRootFromDOMContainer -> createLegacyRoot -> new ReactDOMBlockingRoot -> this._internalRoot = createRootImpl -> root = createContainer -> createFiberRoot -> FiberRoot
     root = container._reactRootContainer = legacyCreateRootFromDOMContainer(
       container,
       forceHydrate,

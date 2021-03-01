@@ -50,9 +50,8 @@ type SchedulerCallbackOptions = {timeout?: number, ...};
 
 const fakeCallbackNode = {};
 
-// Except for NoPriority, these correspond to Scheduler priorities. We use
-// ascending numbers so we can compare them like numbers. They start at 90 to
-// avoid clashing with Scheduler's priorities.
+// 优先级用数字，方便比较
+// 从90开始算React优先级是为了防止和Scheduler的优先级冲突
 export const ImmediatePriority: ReactPriorityLevel = 99;
 export const UserBlockingPriority: ReactPriorityLevel = 98;
 export const NormalPriority: ReactPriorityLevel = 97;
@@ -81,6 +80,7 @@ let initialTimeMs: number = Scheduler_now();
 export const now =
   initialTimeMs < 10000 ? Scheduler_now : () => Scheduler_now() - initialTimeMs;
 
+// 获取当前调度任务的优先级
 export function getCurrentPriorityLevel(): ReactPriorityLevel {
   switch (Scheduler_getCurrentPriorityLevel()) {
     case Scheduler_ImmediatePriority:

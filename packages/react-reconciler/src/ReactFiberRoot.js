@@ -34,12 +34,14 @@ type BaseFiberRootProperties = {|
   // The type of root (legacy, batched, concurrent, etc.)
   tag: RootTag,
 
-  // Any additional information from the host associated with this root.
   // root节点
   // 即：ReactDom.render(<App />, document.getElementById('root'))中的第二个参数，container
   containerInfo: any,
 
   // Used only by persistent updates.
+  // 在持久更新中才会被用到
+  // 也就是说不支持增量更新的平台会用到，react-dom不会用到。
+  // 不支持增量更新的意思是：不更新某一块地方，而是整个应用完全更新
   pendingChildren: any,
 
   // The currently active root fiber. This is the mutable root of the tree.
@@ -51,31 +53,53 @@ type BaseFiberRootProperties = {|
     | Map<Thenable, Set<ExpirationTime>>
     | null,
 
+  // 任务优先级：
+  // 1. 没有提交的任务
+  // 2. 没有提交的被挂起的任务
+  // 3. 没有提交的可能被挂起的任务
+
+  // 当前更新对应的过期时间
   finishedExpirationTime: ExpirationTime,
-  // A finished work-in-progress HostRoot that's ready to be committed.
+
+  // 已经完成任务的FiberRoot对象，如果只有一个Root，那么该对象就是Root对应的Fiber或者null
   finishedWork: Fiber | null,
-  // Timeout handle returned by setTimeout. Used to cancel a pending timeout, if
-  // it's superseded by a new one.
+
+  // 任务在被挂起的时候通过setTimeout设置后返回的id
+  // 用于下一次如果有新的任务被挂起时清理还没有触发的timeout
   timeoutHandle: TimeoutHandle | NoTimeout,
+
   // Top context object, used by renderSubtreeIntoContainer
+  // 顶层context对象，只有主动调用renderSubtreeIntoContainer时才会被使用
   context: Object | null,
+
   pendingContext: Object | null,
-  // Determines if we should attempt to hydrate on the initial mount
+
+  // 用于判断，第一次渲染是否需要融合（是否是ssr）
   +hydrate: boolean,
+
   // Node returned by Scheduler.scheduleCallback
   callbackNode: *,
+
   // Expiration of the callback associated with this root
+  // 跟root有关联的回调函数过期时间
   callbackExpirationTime: ExpirationTime,
+
   // Priority of the callback associated with this root
+  // 跟root有关联的回调函数优先级
   callbackPriority: ReactPriorityLevel,
-  // The earliest pending expiration time that exists in the tree
+
+  // 最旧的不确定是否会挂起的优先级（所有任务进来一开始都是这个状态）
   firstPendingTime: ExpirationTime,
+
   // The earliest suspended expiration time that exists in the tree
+  // 最旧和新的在提交的时候被挂起的任务
   firstSuspendedTime: ExpirationTime,
-  // The latest suspended expiration time that exists in the tree
   lastSuspendedTime: ExpirationTime,
+
   // The next known expiration time after the suspended range
+  // 挂起之后的下一个已知过期时间
   nextKnownPendingLevel: ExpirationTime,
+
   // The latest time at which a suspended component pinged the root to
   // render again
   lastPingedTime: ExpirationTime,
@@ -172,12 +196,16 @@ export function createFiberRoot(
   // 注意：这里的root是FiberRoot对象，uninitializedFiber是Fiber对象
   // root: FiberRoot
   // uninitlizedFiber: Fiber
-  // FiberRoot和rootFiber的关系，FirberRoot.current = rootFiber
+  // 以下两句是互相引用
+  // FirberRoot.current = rootFiber
   root.current = uninitializedFiber;
+  // rootFiber.stateNode = FiberRoot
   uninitializedFiber.stateNode = root;
 
+  // 初始化rootFiber的更新队列
   initializeUpdateQueue(uninitializedFiber);
 
+  // 返回FiberRoot
   return root;
 }
 
