@@ -219,6 +219,7 @@ export type Thenable = {
 };
 
 // Describes where we are in the React execution stack
+// 描述当前执行栈
 let executionContext: ExecutionContext = NoContext;
 // The root we're working on
 let workInProgressRoot: FiberRoot | null = null;
@@ -1182,16 +1183,40 @@ export function discreteUpdates<A, B, C, D, R>(
   }
 }
 
+/**
+ *
+ * const NoContext = 0b000000; -- 0
+ * const BatchedContext = 0b000001; -- 1
+ * const EventContext = 0b000010; -- 2
+ * const DiscreteEventContext = 0b000100; -- 4
+ * const LegacyUnbatchedContext = 0b001000; -- 8
+ * const RenderContext = 0b010000; -- 16
+ * const CommitContext = 0b100000; -- 32
+ *
+ * 功能：
+ * 修改执行上下文变量 executionContext，进入非批量更新模式
+ * 执行完后，恢复上一个模式
+ */
 export function unbatchedUpdates<A, R>(fn: (a: A) => R, a: A): R {
+  // 暂存当前执行栈
   const prevExecutionContext = executionContext;
+  // 以下是位运算
+  // 更改执行栈，且操作符 和 取反操作符，最终运算是： executionContext = 0b000000 & 0b111110
+  // 语义：将executionContext设置为非 BatchContext
   executionContext &= ~BatchedContext;
+  // 通过 |= 将执行栈改为 LegacyUnbatchedContext
+  // 或操作符代表包含 LegacyUnbatchedContext， executionContex = 0b000000 | 0b000100
+  // 语义： 将executionContext设置为 LegacyUnbatchedContext
   executionContext |= LegacyUnbatchedContext;
   try {
+    // 回调函数fn就是updateContainer
     return fn(a);
   } finally {
+    // 执行完回调函数之后，恢复之前暂存的执行栈
     executionContext = prevExecutionContext;
     if (executionContext === NoContext) {
       // Flush the immediate callbacks that were scheduled during this batch
+      // 恢复执行栈后，如果执行栈为NoContext，刷新在此批处理期间调度的即时回调
       flushSyncCallbackQueue();
     }
   }

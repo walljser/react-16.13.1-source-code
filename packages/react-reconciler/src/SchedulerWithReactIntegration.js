@@ -156,6 +156,7 @@ export function cancelCallback(callbackNode: mixed) {
   }
 }
 
+// 刷新同步任务队列
 export function flushSyncCallbackQueue() {
   if (immediateQueueCallbackNode !== null) {
     const node = immediateQueueCallbackNode;
