@@ -318,10 +318,12 @@ export {
   IsThisRendererActing,
 };
 
+// 获取root示例
 export function getPublicRootInstance(
-  container: OpaqueRoot,
+  container: OpaqueRoot, // 传入的container是FiberRoot
 ): React$Component<any, any> | PublicInstance | null {
-  const containerFiber = container.current;
+  // 获取当前节点
+  const containerFiber = container.current; // Root Fiber, 当前应用对应的 Fiber 对象
   if (!containerFiber.child) {
     return null;
   }

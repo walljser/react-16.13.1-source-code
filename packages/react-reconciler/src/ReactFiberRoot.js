@@ -190,7 +190,7 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
-  // 创建根节点对应的rootFiber
+  // 创建根节点对应的rootFiber：  createHostRootFiber() -> createFiber() -> new FiberNode()
   const uninitializedFiber = createHostRootFiber(tag);
   // 为 FiberRoot 添加current属性为 rootFiber
   // 注意：这里的root是FiberRoot对象，uninitializedFiber是Fiber对象

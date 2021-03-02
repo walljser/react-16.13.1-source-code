@@ -233,16 +233,20 @@ function legacyRenderSubtreeIntoContainer(
     // 初始化渲染
     // 调用legacyCreateRootFromDOMContainer创建root对象
     // 为container容器添加_reactRootContainer对象属性
-    // legacyCreateRootFromDOMContainer -> createLegacyRoot -> new ReactDOMBlockingRoot -> this._internalRoot = createRootImpl -> root = createContainer -> createFiberRoot -> FiberRoot
+    // legacyCreateRootFromDOMContainer() -> createLegacyRoot() -> new ReactDOMBlockingRoot() -> this._internalRoot = createRootImpl() -> root = createContainer() -> createFiberRoot() -> FiberRoot
     root = container._reactRootContainer = legacyCreateRootFromDOMContainer(
       container,
       forceHydrate,
     );
     // 在_reactRootContainer对象中有一个_internalRoot属性，就是FiberRoot，表示根节点Fiber数据结构
     fiberRoot = root._internalRoot; // 获取FiberRoot对象
+
+    // 判断是否有callback
     if (typeof callback === 'function') {
       const originalCallback = callback;
       callback = function() {
+        // 根据fiberRoot获取公共root实例
+        // 也就是  fiberRoot.current.child.stateNode
         const instance = getPublicRootInstance(fiberRoot);
         originalCallback.call(instance);
       };
