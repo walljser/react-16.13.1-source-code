@@ -26,6 +26,11 @@ export function precacheFiberNode(hostInst, node) {
   node[internalInstanceKey] = hostInst;
 }
 
+/**
+ * container[__reactContainere$ + 随机数] = root.current
+ * @param {*} hostRoot 传进来的值为：root.current
+ * @param {*} node container
+ */
 export function markContainerAsRoot(hostRoot, node) {
   node[internalContainerInstanceKey] = hostRoot;
 }

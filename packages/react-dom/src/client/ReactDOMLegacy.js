@@ -212,11 +212,11 @@ function warnOnInvalidCallback(callback: mixed, callerName: string): void {
 // false,  forceHydrate
 // callback,  callback
 function legacyRenderSubtreeIntoContainer(
-  parentComponent: ?React$Component<any, any>,
-  children: ReactNodeList,
-  container: Container,
-  forceHydrate: boolean,
-  callback: ?Function,
+  parentComponent: ?React$Component<any, any>, // null
+  children: ReactNodeList, // element
+  container: Container, // container
+  forceHydrate: boolean, // false
+  callback: ?Function, // callback
 ) {
   if (__DEV__) {
     topLevelUpdateWarnings(container);
@@ -248,14 +248,19 @@ function legacyRenderSubtreeIntoContainer(
         // 根据fiberRoot获取公共root实例
         // 也就是  fiberRoot.current.child.stateNode
         const instance = getPublicRootInstance(fiberRoot);
+        // 执行回调函数，绑定this到instance上
         originalCallback.call(instance);
       };
     }
     // Initial mount should not be batched.
+    // 拿着FiberRoot去更新，进来的逻辑是首次渲染，不需要批量更新
+    // unbatchedUpdates是非批量更新，因为是初次渲染所以要快
     unbatchedUpdates(() => {
+      // element, fiberRoot, null, callback
       updateContainer(children, fiberRoot, parentComponent, callback);
     });
   } else {
+    // 有root，这里是第二次调用 legacyRenderSubtreeIntoContainer的时候
     fiberRoot = root._internalRoot;
     if (typeof callback === 'function') {
       const originalCallback = callback;
@@ -267,6 +272,7 @@ function legacyRenderSubtreeIntoContainer(
     // Update
     updateContainer(children, fiberRoot, parentComponent, callback);
   }
+  // 初次渲染返回的结果 fiberRoot.current.child.stateNode
   return getPublicRootInstance(fiberRoot);
 }
 

@@ -31,7 +31,7 @@ import {
   injectIntoDevTools,
   flushPassiveEffects,
   IsThisRendererActing,
-  ,
+  attemptSynchronousHydration,
   attemptUserBlockingHydration,
   attemptContinuousHydration,
   attemptHydrationAtCurrentPriority,
