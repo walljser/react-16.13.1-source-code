@@ -60,8 +60,8 @@ var LOW_PRIORITY_TIMEOUT = 10000;
 var IDLE_PRIORITY = maxSigned31BitInt;
 
 // Tasks are stored on a min heap
-var taskQueue = [];
-var timerQueue = [];
+var taskQueue = []; // 立即执行任务列表
+var timerQueue = []; // 定时任务列表
 
 // Incrementing id counter. Used to maintain insertion order.
 var taskIdCounter = 1;
@@ -78,6 +78,10 @@ var isPerformingWork = false;
 var isHostCallbackScheduled = false;
 var isHostTimeoutScheduled = false;
 
+/**
+ * 检查是否有不过期的任务，并把他们加入到新的调度队列中
+ * @param {*} currentTime
+ */
 function advanceTimers(currentTime) {
   // Check for tasks that are no longer delayed and add them to the queue.
   let timer = peek(timerQueue);
@@ -276,6 +280,10 @@ function unstable_wrapCallback(callback) {
   };
 }
 
+/**
+ * 根据优先级获取过期时间
+ * @param {*} priorityLevel
+ */
 function timeoutForPriorityLevel(priorityLevel) {
   switch (priorityLevel) {
     case ImmediatePriority:
@@ -292,11 +300,22 @@ function timeoutForPriorityLevel(priorityLevel) {
   }
 }
 
+// 返回经过包装处理的任务
+/**
+ * 根据优先级，计算出一个expirationTime，然后生成一个新的任务数据
+ * 判断新的任务：如果需要立即执行，则塞入taskQueue执行任务队列，然后调用requestHostCallback(flushWork)
+ * 如果是延迟任务，则执行requestHostTimeout(handleTimeout, startTime - currentTime)。
+ * @param {*} priorityLevel
+ * @param {*} callback
+ * @param {*} options
+ */
 function unstable_scheduleCallback(priorityLevel, callback, options) {
+  // 获取当前时间
   var currentTime = getCurrentTime();
 
   var startTime;
   var timeout;
+  // 更新startTime（默认是currentTime） 和 timeout（默认是5000ms）
   if (typeof options === 'object' && options !== null) {
     var delay = options.delay;
     if (typeof delay === 'number' && delay > 0) {
@@ -309,12 +328,15 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
         ? options.timeout
         : timeoutForPriorityLevel(priorityLevel);
   } else {
-    timeout = timeoutForPriorityLevel(priorityLevel);
+    // 默认值
+    timeout = timeoutForPriorityLevel(priorityLevel); // 5000ms
     startTime = currentTime;
   }
 
+  // 过期时间是当前时间 + timeout
   var expirationTime = startTime + timeout;
 
+  // 封装成新的任务
   var newTask = {
     id: taskIdCounter++,
     callback,
@@ -329,9 +351,13 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
 
   if (startTime > currentTime) {
     // This is a delayed task.
+    // 延时任务，稍后执行
     newTask.sortIndex = startTime;
+    // timerQueue是定时任务列表
     push(timerQueue, newTask);
     if (peek(taskQueue) === null && newTask === peek(timerQueue)) {
+      // 如果立即执行任务列表栈顶为空， 取出定时任务列表栈顶
+      // timerQueue定时任务列表里面的所有任务都是定时任务，栈顶是最早进入的
       // All tasks are delayed, and this is the task with the earliest delay.
       if (isHostTimeoutScheduled) {
         // Cancel an existing timeout.
@@ -340,9 +366,11 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
         isHostTimeoutScheduled = true;
       }
       // Schedule a timeout.
+      // 调度延时任务
       requestHostTimeout(handleTimeout, startTime - currentTime);
     }
   } else {
+    // 即使任务，任务已过期
     newTask.sortIndex = expirationTime;
     push(taskQueue, newTask);
     if (enableProfiling) {

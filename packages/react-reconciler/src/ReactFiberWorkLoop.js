@@ -195,6 +195,7 @@ const {
 
 type ExecutionContext = number;
 
+// 用二进制的每一位来表示是否处于某个状态
 const NoContext = /*                    */ 0b000000;
 const BatchedContext = /*               */ 0b000001;
 const EventContext = /*                 */ 0b000010;
@@ -306,7 +307,7 @@ let currentEventTime: ExpirationTime = NoWork;
  */
 export function requestCurrentTimeForUpdate() {
   if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
-    // We're inside React, so it's fine to read the actual time.
+    // 执行环境为RenderContext或者CommitContext时
     // now() 是调度器 Schedule 的系统当前时间，详情见 scheduler/src/forks/SchedulerHostConfig.default.js/getCurrentTime  => window.performance.now()
     return msToExpirationTime(now());
   }

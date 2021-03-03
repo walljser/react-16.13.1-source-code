@@ -258,9 +258,16 @@ export function updateContainer(
     }
   }
   // suspenseConfig 任务挂起相关配置
+  // 批处理的过程的配置 SuspenseConfig 默认为 null
+  // export type SuspenseConfig = {
+  //  timeoutMs: number,
+  //  busyDelayMs?: number,
+  //  busyMinDurationMs?: number,
+  // };
   const suspenseConfig = requestCurrentSuspenseConfig();
   // expirationTime 过期时间，代表优先级，数字越大，优先级越高 （这里是React优先级更新非常重要的点）
   // SYNC 的数字是最大的，优先级最高
+  // 通过expirationTime 对接点计算过期时间
   const expirationTime = computeExpirationForFiber(
     currentTime,
     current,

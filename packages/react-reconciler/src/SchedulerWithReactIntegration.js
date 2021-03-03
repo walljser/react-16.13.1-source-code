@@ -80,7 +80,7 @@ let initialTimeMs: number = Scheduler_now();
 export const now =
   initialTimeMs < 10000 ? Scheduler_now : () => Scheduler_now() - initialTimeMs;
 
-// 获取当前调度任务的优先级
+// 根据当前调度任务的优先级获取react优先级
 export function getCurrentPriorityLevel(): ReactPriorityLevel {
   switch (Scheduler_getCurrentPriorityLevel()) {
     case Scheduler_ImmediatePriority:
@@ -98,6 +98,10 @@ export function getCurrentPriorityLevel(): ReactPriorityLevel {
   }
 }
 
+/**
+ * 获取调度优先级
+ * @param {*} reactPriorityLevel
+ */
 function reactPriorityToSchedulerPriority(reactPriorityLevel) {
   switch (reactPriorityLevel) {
     case ImmediatePriority:
@@ -119,7 +123,9 @@ export function runWithPriority<T>(
   reactPriorityLevel: ReactPriorityLevel,
   fn: () => T,
 ): T {
+  // 获取调度优先级
   const priorityLevel = reactPriorityToSchedulerPriority(reactPriorityLevel);
+  // 该函数的功能是：临时替换当前的优先级，去执行传进来的 callback
   return Scheduler_runWithPriority(priorityLevel, fn);
 }
 
@@ -166,22 +172,31 @@ export function flushSyncCallbackQueue() {
   flushSyncCallbackQueueImpl();
 }
 
+/**
+ * 更新同步队列
+ */
 function flushSyncCallbackQueueImpl() {
+  // 如果同步队列未处于更新 且 同步队列不为空
   if (!isFlushingSyncQueue && syncQueue !== null) {
     // Prevent re-entrancy.
+    // 上锁，防止重复执行
     isFlushingSyncQueue = true;
     let i = 0;
     try {
       const isSync = true;
-      const queue = syncQueue;
+      const queue = syncQueue; // 同步队列
+      // 用最高优先级执行回调函数
       runWithPriority(ImmediatePriority, () => {
+        // 遍历同步队列
         for (; i < queue.length; i++) {
           let callback = queue[i];
           do {
+            // 执行同步队列里的回调函数
             callback = callback(isSync);
           } while (callback !== null);
         }
       });
+      // 遍历结束后，将同步队列置空
       syncQueue = null;
     } catch (error) {
       // If something throws, leave the remaining callbacks on the queue.
