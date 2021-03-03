@@ -35,15 +35,19 @@ export const Idle = 2;
 // Continuous Hydration is slightly higher than Idle and is used to increase
 // priority of hover targets.
 export const ContinuousHydration = 3;
-export const Sync = MAX_SIGNED_31_BIT_INT;
-export const Batched = Sync - 1;
+// MAX_SIGNED_31_BIT_INT: 最大31位整数 1073741823
+export const Sync = MAX_SIGNED_31_BIT_INT; // 代表同步执行，不会被调度也不会被打断
+export const Batched = Sync - 1; // 批量处理
 
 const UNIT_SIZE = 10;
-const MAGIC_NUMBER_OFFSET = Batched - 1;
+const MAGIC_NUMBER_OFFSET = Batched - 1; // 最大整数偏移量 1073741821
 
 // 1 unit of expiration time represents 10ms.
+// 10ms表示一个过期时间
+// MAGIC_NUMBER_OFFSET表示整型最大值1073741823
 export function msToExpirationTime(ms: number): ExpirationTime {
   // Always subtract from the offset so that we don't clash with the magic number for NoWork.
+  // | 0 是取整。
   return MAGIC_NUMBER_OFFSET - ((ms / UNIT_SIZE) | 0);
 }
 

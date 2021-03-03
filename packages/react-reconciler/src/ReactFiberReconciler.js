@@ -230,6 +230,13 @@ export function createContainer(
   return createFiberRoot(containerInfo, tag, hydrate, hydrationCallbacks);
 }
 
+/**
+ * 更新container
+ * @param {*} element  // element // jsx
+ * @param {*} container // fiberRoot
+ * @param {*} parentComponent
+ * @param {*} callback
+ */
 export function updateContainer(
   element: ReactNodeList,
   container: OpaqueRoot,
@@ -239,7 +246,9 @@ export function updateContainer(
   if (__DEV__) {
     onScheduleRoot(container, element);
   }
+  // 这个current就是fiberRoot对应的rootFiber
   const current = container.current;
+  // 获取currentTime，用于后面计算 expirationTime
   const currentTime = requestCurrentTimeForUpdate();
   if (__DEV__) {
     // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
@@ -249,6 +258,8 @@ export function updateContainer(
     }
   }
   const suspenseConfig = requestCurrentSuspenseConfig();
+  // expirationTime 过期时间，代表优先级，数字越大，优先级越高 （这里是React优先级更新非常重要的点）
+  // SYNC 的数字是最大的，优先级最高
   const expirationTime = computeExpirationForFiber(
     currentTime,
     current,

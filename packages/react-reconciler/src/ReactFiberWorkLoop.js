@@ -292,16 +292,28 @@ let spawnedWorkDuringRender: null | Array<ExpirationTime> = null;
 // In other words, because expiration times determine how updates are batched,
 // we want all updates of like priority that occur within the same event to
 // receive the same expiration time. Otherwise we get tearing.
+
+// currentEventTime初始化为0，代表没有更新
 let currentEventTime: ExpirationTime = NoWork;
 
+/**
+ * 所以currentTime的时间为：
+ *   1. 调度器 Scheduler 的系统当前时间 now()
+ *   2. 抹去10ms的误差
+ *   3. 结果 | 0 取整
+ *   4. 最大偏移量 MAGIC_NUMBER_OFFSET - 结果
+ * 即：107741821 - (now() / 10 | 0)
+ */
 export function requestCurrentTimeForUpdate() {
   if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
     // We're inside React, so it's fine to read the actual time.
+    // now() 是调度器 Schedule 的系统当前时间，详情见 scheduler/src/forks/SchedulerHostConfig.default.js/getCurrentTime  => window.performance.now()
     return msToExpirationTime(now());
   }
   // We're not inside React, so we may be in the middle of a browser event.
   if (currentEventTime !== NoWork) {
     // Use the same start time for all updates until we enter React again.
+    // currentEventTime不为0，直接返回
     return currentEventTime;
   }
   // This is the first update since React yielded. Compute a new start time.
@@ -313,6 +325,9 @@ export function getCurrentTime() {
   return msToExpirationTime(now());
 }
 
+/**
+ * 为Fiber对象计算expirationTime
+ */
 export function computeExpirationForFiber(
   currentTime: ExpirationTime,
   fiber: Fiber,
