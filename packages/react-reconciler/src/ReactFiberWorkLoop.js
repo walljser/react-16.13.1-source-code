@@ -333,13 +333,17 @@ export function computeExpirationForFiber(
   fiber: Fiber,
   suspenseConfig: null | SuspenseConfig,
 ): ExpirationTime {
+  // mode的类型定义在 react-reconciler/src/ReactTypeOfMode
   const mode = fiber.mode;
   if ((mode & BlockingMode) === NoMode) {
     return Sync;
   }
 
+  // 获取当前fiber的优先级
   const priorityLevel = getCurrentPriorityLevel();
   if ((mode & ConcurrentMode) === NoMode) {
+    // 异步模式之外的模式
+    // 若fiber优先级为最高优先级，返回Sync(立即执行)，否则返回Batched（批量处理）
     return priorityLevel === ImmediatePriority ? Sync : Batched;
   }
 
@@ -350,28 +354,36 @@ export function computeExpirationForFiber(
   }
 
   let expirationTime;
-  if (suspenseConfig !== null) {
+  if (suspenseConfig !== null) { // suspenseConfig是挂起相关配置
     // Compute an expiration time based on the Suspense timeout.
+    // 如果有 suspenseConfig，expirationTime = computedSuspenseExpiration
     expirationTime = computeSuspenseExpiration(
       currentTime,
       suspenseConfig.timeoutMs | 0 || LOW_PRIORITY_EXPIRATION,
     );
   } else {
-    // Compute an expiration time based on the Scheduler priority.
+    // 如果没有使用suspenseConfig，React中有四种类型的 expirationTime，基于调度器优先级
     switch (priorityLevel) {
-      case ImmediatePriority:
+      case ImmediatePriority: // 最高优先级
+        // Sync 同步。立即执行
         expirationTime = Sync;
         break;
-      case UserBlockingPriority:
+      case UserBlockingPriority: // 次优先级 交互优先级
         // TODO: Rename this to computeUserBlockingExpiration
+        // 比如事件触发，响应由县级会比较高，因为涉及到用户交互
+        // 计算交互时间（如点击）的过期时间
+        // computeInteractiveExpiration 函数内部是调用 computeExpirationBucket
         expirationTime = computeInteractiveExpiration(currentTime);
         break;
-      case NormalPriority:
-      case LowPriority: // TODO: Handle LowPriority
+      case NormalPriority: // 普通优先级
+      case LowPriority: // 低优先级
         // TODO: Rename this to... something better.
+        // 计算异步更新的过期时间
+        // computeAsyncExpiration 函数内部是调用 computeExpirationBucket
         expirationTime = computeAsyncExpiration(currentTime);
         break;
-      case IdlePriority:
+      case IdlePriority: // 最低优先级
+        // Idle = 2
         expirationTime = Idle;
         break;
       default:

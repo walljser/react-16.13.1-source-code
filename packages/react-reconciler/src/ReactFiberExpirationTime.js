@@ -59,32 +59,57 @@ function ceiling(num: number, precision: number): number {
   return (((num / precision) | 0) + 1) * precision;
 }
 
+/**
+ * 计算过期时间
+ * @param {*} currentTime
+ * @param {*} expirationInMs
+ * @param {*} bucketSizeMs
+ */
 function computeExpirationBucket(
   currentTime,
   expirationInMs,
   bucketSizeMs,
 ): ExpirationTime {
   return (
+    // 1073741821
     MAGIC_NUMBER_OFFSET -
     ceiling(
+      // 1073741821 - currentTime + (high: 150 护着 low: 5000) / 10
       MAGIC_NUMBER_OFFSET - currentTime + expirationInMs / UNIT_SIZE,
+      // (high: 100 或者 low: 250) / 10
       bucketSizeMs / UNIT_SIZE,
     )
   );
+  /**
+   * high的情况：
+   * 1073741821 - ceiling(1073741821 - currentTime + 15, 10)
+   * => 1073741821 - ((((1073741821 - currentTime + 15) / 10) | 0) + 1) * 10
+   * => 1073741821 - (((1073741836 - currentTime) / 10 | 0) * 10
+   * => 1821 - ((1836 - currentTime) / 10 | 0) * 10     // 同时去掉前面相同的位数
+   *
+   * low的情况：
+   * 1073741821 - ceiling(1073741821 - currentTime + 500, 25)
+   * => 1073741821 - ((((1073741821 - currentTime + 500) / 25) | 0) + 1) * 25
+   * => 1073741821 - (((1073741821 - currentTime + 500) / 25) | 0) * 25 - 25
+   * => 1073741796 - (((1073742321 - currentTime) / 25) | 0) * 25
+   * => 1796 - ((2321 - currentTime) / 25 | 0) * 25    // 同时去掉前面相同的位数
+   */
 }
 
 // TODO: This corresponds to Scheduler's NormalPriority, not LowPriority. Update
 // the names to reflect.
+// 低权限的过期时间
 export const LOW_PRIORITY_EXPIRATION = 5000;
 export const LOW_PRIORITY_BATCH_SIZE = 250;
 
+// 计算普通的和异步的expirationTime
 export function computeAsyncExpiration(
   currentTime: ExpirationTime,
 ): ExpirationTime {
   return computeExpirationBucket(
     currentTime,
-    LOW_PRIORITY_EXPIRATION,
-    LOW_PRIORITY_BATCH_SIZE,
+    LOW_PRIORITY_EXPIRATION, // 5000
+    LOW_PRIORITY_BATCH_SIZE, // 250
   );
 }
 
@@ -111,14 +136,17 @@ export function computeSuspenseExpiration(
 //
 // In production we opt for better UX at the risk of masking scheduling
 // problems, by expiring fast.
+// 高权限的过期时间
 export const HIGH_PRIORITY_EXPIRATION = __DEV__ ? 500 : 150;
 export const HIGH_PRIORITY_BATCH_SIZE = 100;
 
+// 计算高权限的expirationTime
+// 高权限的expirationTime一般是由交互事件触发的，所以响应的优先级高
 export function computeInteractiveExpiration(currentTime: ExpirationTime) {
   return computeExpirationBucket(
     currentTime,
-    HIGH_PRIORITY_EXPIRATION,
-    HIGH_PRIORITY_BATCH_SIZE,
+    HIGH_PRIORITY_EXPIRATION, // 150
+    HIGH_PRIORITY_BATCH_SIZE, // 100
   );
 }
 

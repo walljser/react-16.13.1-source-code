@@ -9,6 +9,18 @@
 
 import * as React from 'react';
 
+// React的__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED这个属性引用的是ReactSharedInternals
+/**
+ * 以下代码位于 react/src/ReactSharedInternals
+  const ReactSharedInternals = {
+    ReactCurrentDispatcher,
+    ReactCurrentBatchConfig,
+    ReactCurrentOwner,
+    IsSomeRendererActing,
+    // Used by renderers to avoid bundling object-assign twice in UMD bundles:
+    assign,
+  };
+ */
 const ReactSharedInternals =
   React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
 

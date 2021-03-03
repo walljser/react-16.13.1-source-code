@@ -52,11 +52,11 @@ const fakeCallbackNode = {};
 
 // 优先级用数字，方便比较
 // 从90开始算React优先级是为了防止和Scheduler的优先级冲突
-export const ImmediatePriority: ReactPriorityLevel = 99;
-export const UserBlockingPriority: ReactPriorityLevel = 98;
-export const NormalPriority: ReactPriorityLevel = 97;
-export const LowPriority: ReactPriorityLevel = 96;
-export const IdlePriority: ReactPriorityLevel = 95;
+export const ImmediatePriority: ReactPriorityLevel = 99; // 最高优先级
+export const UserBlockingPriority: ReactPriorityLevel = 98; // 次优先级（交互优先级）
+export const NormalPriority: ReactPriorityLevel = 97; // 正常优先级
+export const LowPriority: ReactPriorityLevel = 96; // 低优先级
+export const IdlePriority: ReactPriorityLevel = 95; // 最低优先级
 // NoPriority is the absence of priority. Also React-only.
 export const NoPriority: ReactPriorityLevel = 90;
 

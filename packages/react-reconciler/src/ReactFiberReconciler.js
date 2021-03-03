@@ -257,6 +257,7 @@ export function updateContainer(
       warnIfNotScopedWithMatchingAct(current);
     }
   }
+  // suspenseConfig 任务挂起相关配置
   const suspenseConfig = requestCurrentSuspenseConfig();
   // expirationTime 过期时间，代表优先级，数字越大，优先级越高 （这里是React优先级更新非常重要的点）
   // SYNC 的数字是最大的，优先级最高
