@@ -405,13 +405,19 @@ export function computeExpirationForFiber(
   return expirationTime;
 }
 
+// scheduleWork
+// 调度更新
 export function scheduleUpdateOnFiber(
   fiber: Fiber,
   expirationTime: ExpirationTime,
 ) {
+  // 判断是否是无限更新
   checkForNestedUpdates();
+  // 开发环境的，可以不用看
   warnAboutRenderPhaseUpdatesInDEV(fiber);
 
+  // 获取FiberRoot
+  // 遍历更新子节点的expirationTime
   const root = markUpdateTimeFromFiberToRoot(fiber, expirationTime);
   if (root === null) {
     warnAboutUpdateOnUnmountedFiberInDEV(fiber);
@@ -481,8 +487,12 @@ export const scheduleWork = scheduleUpdateOnFiber;
 // work without treating it as a typical update that originates from an event;
 // e.g. retrying a Suspense boundary isn't an update, but it does schedule work
 // on a fiber.
+// 根据传进来的Fiber节点，向上找到FiberRoot对象
 function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
   // Update the source fiber's expiration time
+  // 更新fiber的expirationTime
+  // 如果fiber的expirationTime小于当前的expirationTime，说明它的优先级要比当前的低
+  // 把它的优先级提高到当前的优先级
   if (fiber.expirationTime < expirationTime) {
     fiber.expirationTime = expirationTime;
   }
@@ -2663,8 +2673,16 @@ function computeMsUntilSuspenseLoadingDelay(
   return msUntilTimeout;
 }
 
+/**
+ * 防止无限循环嵌套更新
+ * 常见的死循环情况：
+ *   1. 在render里调用setState
+ *   2. 在shouldComponentUpdate里调用setState
+ *   3. 在componentWillUpdate里调用setState
+ */
 function checkForNestedUpdates() {
   if (nestedUpdateCount > NESTED_UPDATE_LIMIT) {
+    // 超过50层嵌套的update，就终止调度，抛出异常
     nestedUpdateCount = 0;
     rootWithNestedUpdates = null;
     invariant(
