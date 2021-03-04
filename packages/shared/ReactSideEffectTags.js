@@ -8,6 +8,10 @@
  */
 
 export type SideEffectTag = number;
+//effectTag采用了复合类型方案设计。通过将二进制0的不同位上的数字置为1来表示不同的tag。
+// 1）|运算可以将不同tag组合成为复合类型。
+// 2）&运算可以用于判断复合类型中是否含有某个Tag.
+// 3）通过A&=~B的方式，可以从复合类型A中去掉某个tagB。
 
 // Don't change these two values. They're used by React Dev Tools.
 export const NoEffect = /*              */ 0b0000000000000;
