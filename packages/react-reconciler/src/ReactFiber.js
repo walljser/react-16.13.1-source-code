@@ -137,19 +137,29 @@ export type Fiber = {|
   // minimize the number of objects created during the initial render.
 
   // Tag identifying the type of fiber.
+  // 标记不同的组件类型
+  // WorkTag类型位于 shared/ReactWorkTags
   tag: WorkTag,
 
   // Unique identifier of this child.
+  // ReactElement里的key，唯一
   key: null | string,
 
   // The value of element.type which is used to preserve the identity during
   // reconciliation of this child.
+  // ReactElement.type，即：调用createElement的第一个参数
   elementType: any,
 
   // The resolved function/class/ associated with this fiber.
+  // Fiber类型信息
   type: any,
 
   // The local state associated with this fiber.
+  // React 元素类型的引用，可以认为这个属性保存了当前 fiber 的状态（比如浏览器环境就是DOM节点）
+  // 不同类型的实例都会记录在stateNode上
+  // ClassComponent对应Class实例
+  // FunctionComponent没有实例，stateNode = null
+  // props、state更新了都会更新到stateNode上
   stateNode: any,
 
   // Conceptual aliases
@@ -162,31 +172,47 @@ export type Fiber = {|
   // This is effectively the parent, but there can be multiple parents (two)
   // so this is only the parent of the thing we're currently processing.
   // It is conceptually the same as the return address of a stack frame.
+  // return指向该对象在Fiber节点树种的`parent`(父节点)
+  // 通常用在处理完该节点后，返回父节点
   return: Fiber | null,
 
   // Singly Linked List Tree Structure.
+  // 子节点
+  // 指向自己的第一个子节点
   child: Fiber | null,
+
+  // 指向自己的兄弟节点
+  // 可以注意到的是，sibling的return和该对象的return应该是同一个父节点
   sibling: Fiber | null,
+  // 当前fiber在父节点下的位置
   index: number,
 
   // The ref last used to attach this node.
   // I'll avoid adding an owner field for prod and model that as functions.
+  // 组件的ref属性
   ref:
     | null
     | (((handle: mixed) => void) & {_stringRef: ?string, ...})
     | RefObject,
 
   // Input is the data coming into process this fiber. Arguments. Props.
+  // 等待被更新的属性，即nextProps
   pendingProps: any, // This type will be more specific once we overload the tag.
+
+  // 上一次渲染完成后的属性，即props
   memoizedProps: any, // The props used to create the output.
 
   // A queue of state updates and callbacks.
+  // 更新队列
+  // 该Fiber对应的组件，所产生的update都会放在该更新队列中，排队等待更新
   updateQueue: UpdateQueue<any> | null,
 
   // The state used to create the output
+  // 上一次渲染的state，即：state
   memoizedState: any,
 
   // Dependencies (contexts, events) for this fiber, if it has any
+  // 链表，该Fiber依赖的context，events
   dependencies: Dependencies | null,
 
   // Bitfield that describes properties about the fiber and its subtree. E.g.
@@ -195,31 +221,49 @@ export type Fiber = {|
   // parent. Additional flags can be set at creation time, but after that the
   // value should remain unchanged throughout the fiber's lifetime, particularly
   // before its child fibers are created.
+  // 用来描述当前的Fiber及其子树的特性，比如是否处于异步渲染等。
+  // 创建fiber时默认继承父节点的mode
+  // Mode的定义在react-reconciler/src/ReactTypeOfMode.js文件中
   mode: TypeOfMode,
 
+  // effectTag、nextEffect、firstEffect、lastEffect属性是副作用相关
   // Effect
+  // 用来记录本次更新在当前组件产生的副作用，比如新增、修改、删除等.
+  // SideEffectTag定义位于 shared/ReactSideEffectTags.js
   effectTag: SideEffectTag,
 
   // Singly linked list fast path to the next fiber with side-effects.
+  // 用链表记录产生的副作用，指向下一个带有side-effects的fiber
   nextEffect: Fiber | null,
 
   // The first and last fiber with side-effect within this subtree. This allows
   // us to reuse a slice of the linked list when we reuse the work done within
   // this fiber.
+  // 副作用链表中的第一个，便于快速更新链表
   firstEffect: Fiber | null,
+  // 副作用链表中的最后一个，便于快速更新链表
   lastEffect: Fiber | null,
 
   // Represents a time in the future by which this work should be completed.
   // Does not include work found in its subtree.
+  // 代表将来任务应该完成的时间点
+  // 不包括该Fiberr的子树产生的任务
+  // 本次更新任务的fiber对应的优先级
   expirationTime: ExpirationTime,
 
   // This is used to quickly determine if a subtree has no pending changes.
+  // 子组件对应的update优先级
+  // 子组件有update的话，记录其expirationTime
   childExpirationTime: ExpirationTime,
 
   // This is a pooled version of a Fiber. Every fiber that gets updated will
   // eventually have a pair. There are cases when we can clean up pairs to save
   // memory if we need to.
+  // 每次更新，会克隆出一个镜像fiber，diff产生的变化会记录在这个fiber上，alternate就是链接当前fiber tree和镜像fiber tree，用于断点恢复
+  // 这个镜像的fiber tree，就是work-in-progress tree
   alternate: Fiber | null,
+
+  // 以下内容是调试相关，收集每个Fiber和子树的渲染时间
 
   // Time spent rendering this Fiber and its descendants for the current update.
   // This tells us how well the tree makes use of sCU for memoization.
