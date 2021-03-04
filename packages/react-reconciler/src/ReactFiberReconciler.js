@@ -122,6 +122,7 @@ if (__DEV__) {
 function getContextForSubtree(
   parentComponent: ?React$Component<any, any>,
 ): Object {
+  // 是root节点的话，就返回空对象
   if (!parentComponent) {
     return emptyContextObject;
   }
@@ -274,6 +275,7 @@ export function updateContainer(
     suspenseConfig,
   );
 
+  // root节点，parentComponent为空，返回空对象
   const context = getContextForSubtree(parentComponent);
   if (container.context === null) {
     container.context = context;
@@ -298,9 +300,13 @@ export function updateContainer(
     }
   }
 
+  // 根据过期时间和挂起相关配置，创建update对象
   const update = createUpdate(expirationTime, suspenseConfig);
   // Caution: React DevTools currently depends on this property
   // being called "element".
+
+  // payload是更新内容
+  // 这里是要更新ReactElement节点，包括其子树
   update.payload = {element};
 
   callback = callback === undefined ? null : callback;
@@ -314,10 +320,16 @@ export function updateContainer(
         );
       }
     }
+    // 更新回调函数
     update.callback = callback;
   }
 
+  // 加入更新队列
+  // 一整个React应用中，会有多次更新，所有更新内容都放在更新队列中
   enqueueUpdate(current, update);
+
+  // 进行任务调度（传入fiberRoot对应的rootFiber，expirationTime）
+  // 当React进行Update后，就要进行调度，根据任务的优先级去调度任务，先执行优先级高的任务
   scheduleWork(current, expirationTime);
 
   return expirationTime;
