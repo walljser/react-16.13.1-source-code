@@ -111,14 +111,14 @@ export type Update<State> = {|
   // 过期时间
   expirationTime: ExpirationTime,
 
-  //
+  // 挂起相关配置
   suspenseConfig: null | SuspenseConfig,
 
   // 下方的代码有这些tag。
-  // export const UpdateState = 0
-  // export const ReplaceState = 1
-  // export const ForceUpdate = 2
-  // export const CaptureUpdate = 3
+  // export const UpdateState = 0  // 更新状态
+  // export const ReplaceState = 1  // 替换更新
+  // export const ForceUpdate = 2  // 强制更新
+  // export const CaptureUpdate = 3  // 捕获更新
   // 指定更新的类型，总共为4种
   tag: 0 | 1 | 2 | 3,
 
@@ -145,16 +145,17 @@ export type UpdateQueue<State> = {|
   baseState: State,
   // 更新队列，单链表，
   baseQueue: Update<State> | null,
-  // 以pending属性存储待执行的更新任务 Update 队列，尾节点存储形式
+  // 以pending属性存储待执行的更新任务 Update 队列，单向循环链表
   shared: SharedQueue<State>,
   // side-effects队列
   effects: Array<Update<State>> | null,
 |};
 
-export const UpdateState = 0;
-export const ReplaceState = 1;
-export const ForceUpdate = 2;
-export const CaptureUpdate = 3;
+// 更新类型
+export const UpdateState = 0;  // 更新状态
+export const ReplaceState = 1;  // 替换更新
+export const ForceUpdate = 2;  // 强制更新
+export const CaptureUpdate = 3;  // 捕获更新
 
 // Global state that is reset at the beginning of calling `processUpdateQueue`.
 // It should only be read right after calling `processUpdateQueue`, via
@@ -203,18 +204,34 @@ export function cloneUpdateQueue<State>(
   }
 }
 
+/**
+ * 创建update对象
+ * @param {*} expirationTime
+ * @param {*} suspenseConfig
+ */
 export function createUpdate(
   expirationTime: ExpirationTime,
   suspenseConfig: null | SuspenseConfig,
 ): Update<*> {
   let update: Update<*> = {
-    expirationTime,
+    expirationTime, // 过期时间
     suspenseConfig,
 
+    // export const UpdateState = 0  // 更新状态
+    // export const ReplaceState = 1  // 替换更新
+    // export const ForceUpdate = 2  // 强制更新
+    // export const CaptureUpdate = 3  // 捕获更新
+
+    // 默认是0，即更新状态
     tag: UpdateState,
+
+    // 更新内容，例如：setState接受的第一个参数
     payload: null,
+
+    // 更新后对应的回调函数
     callback: null,
 
+    // 指向下一个更新
     next: (null: any),
   };
   update.next = update;
@@ -224,22 +241,39 @@ export function createUpdate(
   return update;
 }
 
+/**
+ * 加入更新队列
+ * 主体逻辑：在rootFiber updateQueue中加入update
+ * @param {*} fiber
+ * @param {*} update
+ */
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
+  // 当前更新的updateQueue
   const updateQueue = fiber.updateQueue;
   if (updateQueue === null) {
+    // 只有在fiber没有被挂载的时候才会出现updateQueue为空
     // Only occurs if the fiber has been unmounted.
     return;
   }
 
+  // shared是SharedQueue，以pending属性存储的待执行的更新任务
+  // 待执行的 Update 任务
   const sharedQueue = updateQueue.shared;
   const pending = sharedQueue.pending;
   if (pending === null) {
     // This is the first update. Create a circular list.
+    // pending为空为首次更新，创建一个循环链表（next指向自己）
+    // 最终结构为：
+    // sharedQueue.pending = update
+    // update.next = update
     update.next = update;
   } else {
+    // 插入到pending之后，pending.next之前
+    // 始终是一个循环链表
     update.next = pending.next;
     pending.next = update;
   }
+  // ?????
   sharedQueue.pending = update;
 
   if (__DEV__) {
