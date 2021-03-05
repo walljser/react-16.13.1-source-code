@@ -92,7 +92,7 @@ type BaseFiberRootProperties = {|
   firstPendingTime: ExpirationTime,
 
   // The earliest suspended expiration time that exists in the tree
-  // 最旧和新的在提交的时候被挂起的任务
+  // 最新和最旧的在提交的时候被挂起的任务
   firstSuspendedTime: ExpirationTime,
   lastSuspendedTime: ExpirationTime,
 
@@ -244,11 +244,19 @@ export function markRootSuspendedAtTime(
   }
 }
 
+/**
+ * 标记已更新
+ * @param {*} root
+ * @param {*} expirationTime
+ */
 export function markRootUpdatedAtTime(
   root: FiberRoot,
   expirationTime: ExpirationTime,
 ): void {
   // Update the range of pending times
+  // 更新待处理时间范围
+
+  // 首次渲染，firstPendingTime = NoWork = 0.
   const firstPendingTime = root.firstPendingTime;
   if (expirationTime > firstPendingTime) {
     root.firstPendingTime = expirationTime;
@@ -256,6 +264,7 @@ export function markRootUpdatedAtTime(
 
   // Update the range of suspended times. Treat everything lower priority or
   // equal to this update as unsuspended.
+  // 更新暂停时间范围。对待所有低优先级的事物或等于此更新的事物未暂停
   const firstSuspendedTime = root.firstSuspendedTime;
   if (firstSuspendedTime !== NoWork) {
     if (expirationTime >= firstSuspendedTime) {
