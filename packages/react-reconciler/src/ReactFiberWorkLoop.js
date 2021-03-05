@@ -492,38 +492,52 @@ function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
   // Update the source fiber's expiration time
   // 更新fiber的expirationTime
   // 如果fiber的expirationTime小于当前的expirationTime，说明它的优先级要比当前的低
-  // 把它的优先级提高到当前的优先级
   if (fiber.expirationTime < expirationTime) {
+    // 把当前fiber的优先级提高到当前的优先级
     fiber.expirationTime = expirationTime;
   }
+  // alternate在react-reconciler/src/ReactFiber.js中有提到，是镜像fiber，跟fiber.current是映射关系
   let alternate = fiber.alternate;
+  // 更新alternate的expirationTime，同上面的逻辑
   if (alternate !== null && alternate.expirationTime < expirationTime) {
     alternate.expirationTime = expirationTime;
   }
   // Walk the parent path to the root and update the child expiration time.
+  // 延父节点向上遍历，直到root节点，在遍历的过程中更新子节点的expirationTime
+
+  // 获取fiber的父节点
   let node = fiber.return;
   let root = null;
+  // HostRoot，树的顶端节点root
   if (node === null && fiber.tag === HostRoot) {
+    // 如果父节点不存在，且tag为HostRoot，说明传入的Fiber是RootFiber（初次渲染）
+    // 通过RootFiber的stateNode属性就可以获取到FiberRoot
     root = fiber.stateNode;
   } else {
+    // 传入的Fiber不是RootFiber，通过循环往上查找RootFiber，再通过stateNode属性获取FiberRoot
     while (node !== null) {
       alternate = node.alternate;
       if (node.childExpirationTime < expirationTime) {
+        // 如果子节点的优先级比刚当前更新的优先级要低，就提高子节点的优先级
         node.childExpirationTime = expirationTime;
         if (
           alternate !== null &&
           alternate.childExpirationTime < expirationTime
         ) {
+          // 同时更新alternate的子节点expirationTime
           alternate.childExpirationTime = expirationTime;
         }
       } else if (
         alternate !== null &&
         alternate.childExpirationTime < expirationTime
       ) {
+        // 子节点的优先级不比当前低，检查alternate的子节点是否需要更新
         alternate.childExpirationTime = expirationTime;
       }
       if (node.return === null && node.tag === HostRoot) {
+        // 通过stateNode属性获取FiberRoot
         root = node.stateNode;
+        // 跳出循环
         break;
       }
       node = node.return;
@@ -531,9 +545,11 @@ function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
   }
 
   if (root !== null) {
+    // 首次渲染，workInProgressRoot === null，不进入该分支
     if (workInProgressRoot === root) {
       // Received an update to a tree that's in the middle of rendering. Mark
       // that's unprocessed work on this root.
+      // 当收到对渲染的中间树的更新，标记这是该目录上的未处理工作
       markUnprocessedUpdateTime(expirationTime);
 
       if (workInProgressRootExitStatus === RootSuspendedWithDelay) {
@@ -554,9 +570,11 @@ function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
       }
     }
     // Mark that the root has a pending update.
+    // 标记：根已更新
     markRootUpdatedAtTime(root, expirationTime);
   }
 
+  // 返回FiberRoot
   return root;
 }
 
@@ -1443,6 +1461,10 @@ export function markRenderEventTimeAndConfig(
   }
 }
 
+/**
+ * 标记未处理的更新时间
+ * 大致用来做中断恢复的处理
+ */
 export function markUnprocessedUpdateTime(
   expirationTime: ExpirationTime,
 ): void {
