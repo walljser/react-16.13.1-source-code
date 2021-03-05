@@ -273,7 +273,7 @@ export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
     update.next = pending.next;
     pending.next = update;
   }
-  // ?????
+  // 指向最新的待更新
   sharedQueue.pending = update;
 
   if (__DEV__) {
