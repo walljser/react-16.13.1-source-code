@@ -108,7 +108,7 @@ import invariant from 'shared/invariant';
 import {getCurrentPriorityLevel} from './SchedulerWithReactIntegration';
 
 export type Update<State> = {|
-  // 过期时间
+  // 过期时间（本次更新任务的优先级）
   expirationTime: ExpirationTime,
 
   // 挂起相关配置
