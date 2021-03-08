@@ -120,8 +120,10 @@ function createRootImpl(
   const hydrationCallbacks =
     (options != null && options.hydrationOptions) || null; // 服务端渲染相关
   // react-reconciler/src/ReactFiberReconciler/createContainer()
+  // 创建FiberRoot
   const root = createContainer(container, tag, hydrate, hydrationCallbacks);
   // container[__reactContainere] = root.current
+  // root.current是rootFiber对象
   markContainerAsRoot(root.current, container);
   if (hydrate && tag !== LegacyRoot) {
     const doc =
