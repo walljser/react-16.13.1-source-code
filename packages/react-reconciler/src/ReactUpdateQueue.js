@@ -388,6 +388,16 @@ function getStateFromUpdate<State>(
   return prevState;
 }
 
+/**
+ * 更新 update 队列，并更新 state
+ * 主要流程：
+ *   1. 丢弃原先的baseQueue，将pendingQueue赋值给baseQueue，作为执行中的Update队列
+ *   2. 启用 while 循环处理Update队列。如果优先级足够，获取最新的状态值；如果优先级不够，添加到newBaseQueue队列，等待下次处理。
+ * @param {*} workInProgress
+ * @param {*} props
+ * @param {*} instance
+ * @param {*} renderExpirationTime
+ */
 export function processUpdateQueue<State>(
   workInProgress: Fiber,
   props: any,
@@ -395,8 +405,10 @@ export function processUpdateQueue<State>(
   renderExpirationTime: ExpirationTime,
 ): void {
   // This is always non-null on a ClassComponent or HostRoot
+  // 获取updateQueue
   const queue: UpdateQueue<State> = (workInProgress.updateQueue: any);
 
+  // 非强制更新
   hasForceUpdate = false;
 
   if (__DEV__) {
@@ -419,8 +431,10 @@ export function processUpdateQueue<State>(
       pendingQueue.next = baseFirst;
     }
 
+    // 将pendingQueue赋值给baseQueue
     baseQueue = pendingQueue;
 
+    // 将pendingQueue置空
     queue.shared.pending = null;
     // TODO: Pass `current` as argument
     const current = workInProgress.alternate;
@@ -447,6 +461,8 @@ export function processUpdateQueue<State>(
       let update = first;
       do {
         const updateExpirationTime = update.expirationTime;
+        // 优先级不足时，将 update 添加到 newBaseQueue 队列中
+        // newBaseState 更新为前一个 update 任务的结果
         if (updateExpirationTime < renderExpirationTime) {
           // Priority is insufficient. Skip this update. If this is the first
           // skipped update, the previous update/state is the new base
