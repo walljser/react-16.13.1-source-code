@@ -969,7 +969,11 @@ function finishClassComponent(
   return workInProgress.child;
 }
 
+/**
+ * 将一些关键信息入栈，便于恢复或者追踪
+ */
 function pushHostRootContext(workInProgress) {
+  // root: FiberRoot
   const root = (workInProgress.stateNode: FiberRoot);
   if (root.pendingContext) {
     pushTopLevelContextObject(
@@ -984,8 +988,13 @@ function pushHostRootContext(workInProgress) {
   pushHostContainer(workInProgress, root.containerInfo);
 }
 
+/**
+ * 更新 HostRoot 组件
+ * current: workInProgresss.alternate
+ */
 function updateHostRoot(current, workInProgress, renderExpirationTime) {
   pushHostRootContext(workInProgress);
+  // 获取更新队列
   const updateQueue = workInProgress.updateQueue;
   invariant(
     current !== null && updateQueue !== null,
@@ -997,6 +1006,7 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
   const prevState = workInProgress.memoizedState;
   const prevChildren = prevState !== null ? prevState.element : null;
   cloneUpdateQueue(current, workInProgress);
+  // 更新 update 队列，并更新state
   processUpdateQueue(workInProgress, nextProps, null, renderExpirationTime);
   const nextState = workInProgress.memoizedState;
   // Caution: React DevTools currently depends on this property
@@ -1303,12 +1313,15 @@ function mountIncompleteClassComponent(
   );
 }
 
+// 进一步明确组件的更新方式
 function mountIndeterminateComponent(
   _current,
   workInProgress,
   Component,
   renderExpirationTime,
 ) {
+  // 只有在第一次渲染的时候，才会调用mountInterminateComponent，此时current应该为null
+  // 出现_current !== null的情况，一般是第一次渲染的时候捕获到 error 了，此时需要重置_current和workInProgress
   if (_current !== null) {
     // An indeterminate component only mounts if it suspended inside a non-
     // concurrent tree, in an inconsistent state. We want to treat it like
@@ -1368,6 +1381,8 @@ function mountIndeterminateComponent(
     );
     setIsRendering(false);
   } else {
+    // 因为FunctionComponent一开始是处于indeterminateComponent的状态下，所以会涉及到hooks
+    // 渲染的过程中，对里面用到的hook函数做一些操作
     value = renderWithHooks(
       null,
       workInProgress,
@@ -1380,6 +1395,7 @@ function mountIndeterminateComponent(
   // React DevTools reads this flag.
   workInProgress.effectTag |= PerformedWork;
 
+  // 确认是否是 ClassComponent，只有ClassComponent有 render 方法
   if (
     typeof value === 'object' &&
     value !== null &&
@@ -1447,7 +1463,9 @@ function mountIndeterminateComponent(
       renderExpirationTime,
     );
   } else {
+    // 该分支是FunctionComponent
     // Proceed under the assumption that this is a function component
+    // 复制FunctionCopmonent，按照FunctionComponent的流程更新组件
     workInProgress.tag = FunctionComponent;
     if (__DEV__) {
       if (disableLegacyContext && Component.contextTypes) {
@@ -2871,11 +2889,19 @@ function remountFiber(
   }
 }
 
+/**
+ * 判断fiber有没有更新
+ * 有更新: 进行相应的组件更新
+ * 没有更新：复制节点
+ */
 function beginWork(
-  current: Fiber | null,
+  current: Fiber | null, // current: workInProgress.alternate
   workInProgress: Fiber,
   renderExpirationTime: ExpirationTime,
 ): Fiber | null {
+  // 只有当调用 reactDom.render 的时候，rootFiber的expirationTime才有值，rootFiber 才会更新
+
+  // 获取fiber 对象上更新的过期时间
   const updateExpirationTime = workInProgress.expirationTime;
 
   if (__DEV__) {
@@ -2896,24 +2922,33 @@ function beginWork(
     }
   }
 
+  // 判断是不是第一次渲染
   if (current !== null) {
+    // 如果不是第一次渲染
+
+    // 上一次渲染完成后的props，oldProps
     const oldProps = current.memoizedProps;
+    // 新的props， newProps
     const newProps = workInProgress.pendingProps;
 
     if (
+      // 前后 props 是否不相等
       oldProps !== newProps ||
+      // 是否有老版本的 context 使用，并且发生了变化
       hasLegacyContextChanged() ||
       // Force a re-render if the implementation changed due to hot reload:
       (__DEV__ ? workInProgress.type !== current.type : false)
     ) {
       // If props or context changed, mark the fiber as having performed work.
       // This may be unset if the props are determined to be equal later (memo).
+      // 判断接收到了更新
       didReceiveUpdate = true;
-    } else if (updateExpirationTime < renderExpirationTime) {
+    } else if (updateExpirationTime < renderExpirationTime) { // 有更新，但优先级不高，在本次渲染过程中不需要执行，设为false
       didReceiveUpdate = false;
       // This fiber does not have any pending work. Bailout without entering
       // the begin phase. There's still some bookkeeping we that needs to be done
       // in this optimized path, mostly pushing stuff onto the stack.
+      // 根据workInProgress的tag，进行相应组件的更新
       switch (workInProgress.tag) {
         case HostRoot:
           pushHostRootContext(workInProgress);
@@ -3096,8 +3131,11 @@ function beginWork(
   // move this assignment out of the common path and into each branch.
   workInProgress.expirationTime = NoWork;
 
+  // 节点有更新才会走到这里
+  // 根据节点类型进行组件的更新
   switch (workInProgress.tag) {
     case IndeterminateComponent: {
+      // 该类型，需要进一步明确更新的类型
       return mountIndeterminateComponent(
         current,
         workInProgress,
@@ -3116,21 +3154,28 @@ function beginWork(
       );
     }
     case FunctionComponent: {
+      // React 组件的类型
+      // FunctionComponent的类型是 function
       const Component = workInProgress.type;
+      // 待更新的props
       const unresolvedProps = workInProgress.pendingProps;
       const resolvedProps =
         workInProgress.elementType === Component
           ? unresolvedProps
           : resolveDefaultProps(Component, unresolvedProps);
+      // 更新 FunctionComponent
+      // 可以看到大部分是workInProgress的属性
       return updateFunctionComponent(
-        current,
+        current, // workInProgress.alternate
         workInProgress,
-        Component,
-        resolvedProps,
+        Component, // workInProgress.type
+        resolvedProps, // workInProgress.pendingProps
         renderExpirationTime,
       );
     }
     case ClassComponent: {
+      // React 组件的类型
+      // ClassComponent的类型是 class
       const Component = workInProgress.type;
       const unresolvedProps = workInProgress.pendingProps;
       const resolvedProps =
@@ -3148,8 +3193,10 @@ function beginWork(
     case HostRoot:
       return updateHostRoot(current, workInProgress, renderExpirationTime);
     case HostComponent:
+      // 更新 DOM 标签
       return updateHostComponent(current, workInProgress, renderExpirationTime);
     case HostText:
+      // 更新文本节点
       return updateHostText(current, workInProgress);
     case SuspenseComponent:
       return updateSuspenseComponent(
