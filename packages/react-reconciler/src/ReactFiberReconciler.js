@@ -119,6 +119,7 @@ if (__DEV__) {
   didWarnAboutFindNodeInStrictMode = {};
 }
 
+// 获取执行上下文
 function getContextForSubtree(
   parentComponent: ?React$Component<any, any>,
 ): Object {
@@ -217,6 +218,7 @@ function findHostInstanceWithWarning(
   return findHostInstance(component);
 }
 
+// 创建FiberRoot
 export function createContainer(
   containerInfo: Container,
   tag: RootTag,
@@ -268,7 +270,6 @@ export function updateContainer(
   const suspenseConfig = requestCurrentSuspenseConfig();
   // expirationTime 过期时间，代表优先级，数字越大，优先级越高 （这里是React优先级更新非常重要的点）
   // SYNC 的数字是最大的，优先级最高
-  // 通过expirationTime 对接点计算过期时间
   const expirationTime = computeExpirationForFiber(
     currentTime,
     current,
