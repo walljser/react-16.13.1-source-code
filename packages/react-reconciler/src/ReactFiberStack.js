@@ -31,6 +31,7 @@ function isEmpty(): boolean {
   return index === -1;
 }
 
+// 从后往前，将栈 valueStack 内的元素出栈赋值
 function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
   if (index < 0) {
     if (__DEV__) {
@@ -53,6 +54,7 @@ function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
     fiberStack[index] = null;
   }
 
+  // 引用 -1
   index--;
 }
 
@@ -65,6 +67,7 @@ function push<T>(cursor: StackCursor<T>, value: T, fiber: Fiber): void {
     fiberStack[index] = fiber;
   }
 
+  // cursor.current执行的地址发生变化，原来指向的地址被压到 valueStack 栈中
   cursor.current = value;
 }
 
