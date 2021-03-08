@@ -16,6 +16,7 @@ export const Namespaces = {
 };
 
 // Assumes there is no parent namespace.
+// 根据 DOM 实例的标签获取相应的命名空间
 export function getIntrinsicNamespace(type: string): string {
   switch (type) {
     case 'svg':

@@ -223,7 +223,9 @@ export function recordEffect(): void {
   }
 }
 
+// 测试环境使用
 export function recordScheduleUpdate(): void {
+  // __DEV__
   if (enableUserTimingAPI) {
     if (isCommitting) {
       hasScheduledUpdateInCurrentCommit = true;
@@ -353,6 +355,7 @@ export function stopPhaseTimer(): void {
   }
 }
 
+// 绑定currentFiber
 export function startWorkLoopTimer(nextUnitOfWork: Fiber | null): void {
   if (enableUserTimingAPI) {
     currentFiber = nextUnitOfWork;
