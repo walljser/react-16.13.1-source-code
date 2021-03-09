@@ -65,6 +65,7 @@ function pushHostContainer(fiber: Fiber, nextRootInstance: Container) {
   // So we push an empty value first. This lets us safely unwind on errors.
   push(contextStackCursor, NO_CONTEXT, fiber);
   // getRootHostContext函数在packages/react-dom/src/client/ReactDOMHostConfig.js中
+  // 返回namespace
   const nextRootContext = getRootHostContext(nextRootInstance);
   // Now that we know this function doesn't throw, replace it.
   pop(contextStackCursor, fiber);
