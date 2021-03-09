@@ -61,6 +61,7 @@ function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
 function push<T>(cursor: StackCursor<T>, value: T, fiber: Fiber): void {
   index++;
 
+  // 将当前的状态入栈
   valueStack[index] = cursor.current;
 
   if (__DEV__) {
