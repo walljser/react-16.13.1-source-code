@@ -315,6 +315,16 @@ export function enqueueCapturedUpdate<State>(
   }
 }
 
+/**
+ * 执行update，计算最新的state
+ * @param {*} workInProgress
+ * @param {*} queue
+ * @param {*} update
+ * @param {*} prevState
+ * @param {*} nextProps
+ * @param {*} instance
+ * @returns
+ */
 function getStateFromUpdate<State>(
   workInProgress: Fiber,
   queue: UpdateQueue<State>,
@@ -325,6 +335,7 @@ function getStateFromUpdate<State>(
 ): any {
   switch (update.tag) {
     case ReplaceState: {
+      // 返回payload执行后的state
       const payload = update.payload;
       if (typeof payload === 'function') {
         // Updater function
@@ -347,13 +358,17 @@ function getStateFromUpdate<State>(
       return payload;
     }
     case CaptureUpdate: {
+      // ~的意思是获取除了shouldCapture外所有的属性
+      // 最后是获取了DidCapture
       workInProgress.effectTag =
         (workInProgress.effectTag & ~ShouldCapture) | DidCapture;
     }
     // Intentional fallthrough
     case UpdateState: {
+      // 通过 setState 传入的属性
       const payload = update.payload;
       let partialState;
+      // 如果 payload 是function，就执行payload，获得新的state
       if (typeof payload === 'function') {
         // Updater function
         if (__DEV__) {
@@ -373,11 +388,13 @@ function getStateFromUpdate<State>(
         // Partial state object
         partialState = payload;
       }
+      // 如果partialState没有值，就视为没有更新 state
       if (partialState === null || partialState === undefined) {
         // Null and undefined are treated as no-ops.
         return prevState;
       }
       // Merge the partial state and the previous state.
+      // 如果partialState有值，使用 Object.assign 将其与未更新的部分 state 属性进行合并，
       return Object.assign({}, prevState, partialState);
     }
     case ForceUpdate: {
@@ -401,7 +418,7 @@ function getStateFromUpdate<State>(
 export function processUpdateQueue<State>(
   workInProgress: Fiber,
   props: any,
-  instance: any,
+  instance: any, // null
   renderExpirationTime: ExpirationTime,
 ): void {
   // This is always non-null on a ClassComponent or HostRoot
@@ -415,6 +432,7 @@ export function processUpdateQueue<State>(
     currentlyProcessingQueue = queue.shared;
   }
 
+  // 准备执行更新，丢弃原先的更新任务baseQueue，将 pendingQueue 赋值给 baseQueue
   // The last rebase update that is NOT part of the base state.
   let baseQueue = queue.baseQueue;
 
@@ -433,7 +451,6 @@ export function processUpdateQueue<State>(
 
     // 将pendingQueue赋值给baseQueue
     baseQueue = pendingQueue;
-
     // 将pendingQueue置空
     queue.shared.pending = null;
     // TODO: Pass `current` as argument
@@ -510,12 +527,15 @@ export function processUpdateQueue<State>(
           // TODO: We should skip this update if it was already committed but currently
           // we have no way of detecting the difference between a committed and suspended
           // update here.
+          // 可跳过
           markRenderEventTimeAndConfig(
             updateExpirationTime,
             update.suspenseConfig,
           );
 
           // Process this update.
+          // 执行 update，计算出一个新的结果
+          // 获取最新的state
           newState = getStateFromUpdate(
             workInProgress,
             queue,
@@ -524,7 +544,9 @@ export function processUpdateQueue<State>(
             props,
             instance,
           );
+
           const callback = update.callback;
+          // 含有 callback 回调，更新 fiber.effectTag、baseQueue.effects
           if (callback !== null) {
             workInProgress.effectTag |= Callback;
             let effects = queue.effects;
@@ -535,8 +557,11 @@ export function processUpdateQueue<State>(
             }
           }
         }
+        // 跳到下一个 update，继续循环
         update = update.next;
+
         if (update === null || update === first) {
+          // 判断结束循环
           pendingQueue = queue.shared.pending;
           if (pendingQueue === null) {
             break;
@@ -569,6 +594,8 @@ export function processUpdateQueue<State>(
     // shouldComponentUpdate is tricky; but we'll have to account for
     // that regardless.
     markUnprocessedUpdateTime(newExpirationTime);
+    // 由于执行了 update 队列的部分更新，
+    // 那么 update 队列的expirationTime将由保留下来的 update 元素的最高优先级的 expirationTime 决定
     workInProgress.expirationTime = newExpirationTime;
     workInProgress.memoizedState = newState;
   }
