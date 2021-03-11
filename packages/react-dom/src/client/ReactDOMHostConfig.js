@@ -330,6 +330,7 @@ export function shouldSetTextContent(type: string, props: Props): boolean {
   );
 }
 
+// 是否设置hidden属性
 export function shouldDeprioritizeSubtree(type: string, props: Props): boolean {
   return !!props.hidden;
 }
