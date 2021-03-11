@@ -102,6 +102,15 @@ if (__DEV__) {
 
 const isArray = Array.isArray;
 
+/**
+ * 对string ref进行处理，转换成一个方法，方法的主要功能室：设置 instance.refs[stringRef] = element, 相当于把string ref转换成了function ref
+ * 之后对于更新过程中string ref是否变化，需要对比的是current.ref._stringRef，这个属性记录了上一次渲染的string ref
+ *
+ * string ref会被替代，建议不要使用string ref
+ *
+ * owner是在调用 createElement 的时候获取的，通过 ReactCurrentOwner.current 获取，这个值在更新一个组件前会被设置
+ * 比如更新 ClassComponent 的时候，调用 render 方法之前会设置，然后调用 render 的时候就可以获取到对应的 owner 了
+ */
 function coerceRef(
   returnFiber: Fiber,
   current: Fiber | null,
@@ -113,6 +122,9 @@ function coerceRef(
     typeof mixedRef !== 'function' &&
     typeof mixedRef !== 'object'
   ) {
+    // ref不是function, object
+
+    // dev环境，可不看
     if (__DEV__) {
       // TODO: Clean this up once we turn on the string ref warning for
       // everyone, because the strict mode case will no longer be relevant
@@ -176,14 +188,17 @@ function coerceRef(
           'bug in React. Please file an issue.',
         mixedRef,
       );
+      // ref转为string
       const stringRef = '' + mixedRef;
       // Check if previous string ref matches new string ref
+      // 判断string ref是否有变化
       if (
         current !== null &&
         current.ref !== null &&
         typeof current.ref === 'function' &&
         current.ref._stringRef === stringRef
       ) {
+        // 没有变化，直接返回
         return current.ref;
       }
       const ref = function(value) {
@@ -265,7 +280,43 @@ function warnOnFunctionType() {
 // to be able to optimize each path individually by branching early. This needs
 // a compiler or we can do it manually. Helpers that don't need this branching
 // live outside of this function.
+/**
+ * ChildReconciler是一个很长的方法，大概有1200行
+ * function ChildReconciler(shouldTrackSideEffects) {
+    function deleteChild() {}
+    function deleteRemainingChildren() {}
+    function mapRemainingChildren() {}
+    function useFiber() {}
+    function placeChild() {}
+    function placeSingleChild() {}
+    function updateTextNode() {}
+    function updateElement() {}
+    function updatePortal() {}
+    function updateFragment() {}
+    function createChild() {}
+    function updateSlot() {}
+    function updateFromMap() {}
+    function warnOnInvalidKey() {}
+    function reconcileChildrenArray() {}
+    function reconcileChildrenIterator() {}
+    function reconcileSingleElement() {}
+    function reconcileSinglePortal() {}
+    function reconcileChildFibers() {}
+    return reconcileChildFibers;
+  }
+ *
+ * 对不同类型的节点进行调和，调用不同的 diff 算法，或生成、删除、复用fiber节点
+ *  1. 单个元素，调用 reconcileSingleElement
+ *  2. 单个portal元素，调用 reconcileSinglePortal
+ *  3. string or number，调用 reconcileSingleTextNode
+ *  4. Array，调用 reconcileChildrenArray
+ *    1 ~ 3种操作，在信子节点上添加 effectTag: Placement，标记为更新操作，
+ *    这些操作的标记，将用于commit阶段
+ * @param {*} shouldTrackSideEffects 是否跟踪副作用
+ * @returns reconcileChildFibers
+ */
 function ChildReconciler(shouldTrackSideEffects) {
+  // 为要删除的子节点做Deletion标记
   function deleteChild(returnFiber: Fiber, childToDelete: Fiber): void {
     if (!shouldTrackSideEffects) {
       // Noop.
@@ -287,6 +338,12 @@ function ChildReconciler(shouldTrackSideEffects) {
     childToDelete.effectTag = Deletion;
   }
 
+  /**
+   * 删除兄弟节点
+   * @param {*} returnFiber
+   * @param {*} currentFirstChild
+   * @returns
+   */
   function deleteRemainingChildren(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -327,6 +384,9 @@ function ChildReconciler(shouldTrackSideEffects) {
     return existingChildren;
   }
 
+  /**
+   * 复制 fiber 节点，并重置 index 和 sibling
+   */
   function useFiber(fiber: Fiber, pendingProps: mixed): Fiber {
     // We currently set sibling to null and index to 0 here because it is easy
     // to forget to do before returning it. E.g. for the single child case.
@@ -364,6 +424,11 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
   }
 
+  /**
+   * 为fiber的effectTag打上Placement
+   * @param {*} newFiber
+   * @returns
+   */
   function placeSingleChild(newFiber: Fiber): Fiber {
     // This is simpler for the single child case. We only need to do a
     // placement for inserting new children.
@@ -1151,6 +1216,14 @@ function ChildReconciler(shouldTrackSideEffects) {
     return created;
   }
 
+  /**
+   * 调和单个子节点
+   *  1. 根据 key 判断节点是否可以复用 (如果 key 不存在为 null 也认为他是相等的)
+   *  2. 根据节点的不同创建不同的fiber对象
+   *     如果是REACT_FRAGMENT_TYPE类型，调用createFiberFromFragment创建fiber对象
+   *     其他类型，调用createFiberFromElement创建fiber对象
+   *  3. createFiberFormElement -> createFiberFromTypeAndProps -> createFiber
+   */
   function reconcileSingleElement(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -1162,11 +1235,17 @@ function ChildReconciler(shouldTrackSideEffects) {
     while (child !== null) {
       // TODO: If key === null and child.key === null, then this only applies to
       // the first item in the list.
+      // 判断 key 是否相等
+
+      // key相同的话复用节点，ReactElment里的key，就是<div key='123'>abc</div>
+      // 所以当有多个相同 element 放在同一组时，React 建议设置 key，方便不产生更新的节点能进行复用
       if (child.key === key) {
         switch (child.tag) {
           case Fragment: {
             if (element.type === REACT_FRAGMENT_TYPE) {
+              // fragment
               deleteRemainingChildren(returnFiber, child.sibling);
+              // fragment取children
               const existing = useFiber(child, element.props.children);
               existing.return = returnFiber;
               if (__DEV__) {
@@ -1204,9 +1283,16 @@ function ChildReconciler(shouldTrackSideEffects) {
                 ? isCompatibleFamilyForHotReloading(child, element)
                 : false)
             ) {
+              // 节点类型未改变
+              // 复用child，删除它的兄弟节点
+              // 因为旧节点有兄弟节点，新节点没有
               deleteRemainingChildren(returnFiber, child.sibling);
+              // 复制 fiber 节点，并重置 index 和 sibling
+              // existing就是复用的节点
               const existing = useFiber(child, element.props);
+              // 若ref是string ref，设置正确的ref
               existing.ref = coerceRef(returnFiber, child, element);
+              // 设置父节点
               existing.return = returnFiber;
               if (__DEV__) {
                 existing._debugSource = element._source;
@@ -1226,7 +1312,9 @@ function ChildReconciler(shouldTrackSideEffects) {
       child = child.sibling;
     }
 
+    // fragment
     if (element.type === REACT_FRAGMENT_TYPE) {
+      // 创建 Fragment 类型的 fiber 节点
       const created = createFiberFromFragment(
         element.props.children,
         returnFiber.mode,
@@ -1236,12 +1324,16 @@ function ChildReconciler(shouldTrackSideEffects) {
       created.return = returnFiber;
       return created;
     } else {
+      // element
+      // 创建 Element 类型的 fiber 节点
       const created = createFiberFromElement(
         element,
         returnFiber.mode,
         expirationTime,
       );
+      // 同上
       created.ref = coerceRef(returnFiber, currentFirstChild, element);
+      // 设置父节点
       created.return = returnFiber;
       return created;
     }
@@ -1290,6 +1382,14 @@ function ChildReconciler(shouldTrackSideEffects) {
   // This API will tag the children with the side-effect of the reconciliation
   // itself. They will be added to the side-effect list as we pass through the
   // children and the parent.
+  /**
+   *
+   * @param {*} returnFiber // 父节点
+   * @param {*} currentFirstChild
+   * @param {*} newChild // 计算出来的 children
+   * @param {*} expirationTime
+   * @returns
+   */
   function reconcileChildFibers(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -1304,12 +1404,15 @@ function ChildReconciler(shouldTrackSideEffects) {
     // Handle top level unkeyed fragments as if they were arrays.
     // This leads to an ambiguity between <>{[...]}</> and <>...</>.
     // We treat the ambiguous cases above the same.
+    // 是否是 fragment
     const isUnkeyedTopLevelFragment =
       typeof newChild === 'object' &&
       newChild !== null &&
       newChild.type === REACT_FRAGMENT_TYPE &&
       newChild.key === null;
     if (isUnkeyedTopLevelFragment) {
+      // 是 fragment，就取 fragment 的children
+      // fragment标签是没有意义的，只渲染children
       newChild = newChild.props.children;
     }
 
@@ -1319,6 +1422,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     if (isObject) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
+          // ReactElement
           return placeSingleChild(
             reconcileSingleElement(
               returnFiber,
@@ -1328,6 +1432,8 @@ function ChildReconciler(shouldTrackSideEffects) {
             ),
           );
         case REACT_PORTAL_TYPE:
+          // ReactProtal
+          // ReactDOM.createProtal(child, container)
           return placeSingleChild(
             reconcileSinglePortal(
               returnFiber,
@@ -1340,6 +1446,8 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     if (typeof newChild === 'string' || typeof newChild === 'number') {
+      // 文本节点
+      // 判断之前是否也是 text Node，是的话可以直接复用，替换文本即可
       return placeSingleChild(
         reconcileSingleTextNode(
           returnFiber,
@@ -1351,6 +1459,8 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     if (isArray(newChild)) {
+      // 数组节点
+      // 处理子节点是数组的情况
       return reconcileChildrenArray(
         returnFiber,
         currentFirstChild,
@@ -1360,6 +1470,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     if (getIteratorFn(newChild)) {
+      // InteratorFunction
       return reconcileChildrenIterator(
         returnFiber,
         currentFirstChild,
@@ -1369,6 +1480,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     if (isObject) {
+      // 如果 element 和前面所有类型都不符合，报错
       throwOnInvalidObjectType(returnFiber, newChild);
     }
 
@@ -1377,6 +1489,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         warnOnFunctionType();
       }
     }
+    // 异常处理
     if (typeof newChild === 'undefined' && !isUnkeyedTopLevelFragment) {
       // If the new child is undefined, and the return fiber is a composite
       // component, throw an error. If Fiber return types are disabled,
@@ -1408,6 +1521,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     // Remaining cases are all treated as empty.
+    // 进这里说明返回值为 null，删除所有的 children
     return deleteRemainingChildren(returnFiber, currentFirstChild);
   }
 
