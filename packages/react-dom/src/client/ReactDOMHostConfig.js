@@ -229,6 +229,18 @@ export function resetAfterCommit(containerInfo: Container): void {
   selectionInformation = null;
 }
 
+/**
+ * 创建 DOM 实例
+ * 1、创建 DOM 元素
+ * 2、创建指向 fiber 对象的属性，方便从DOM 实例上获取 fiber 对象
+ * 3、创建指向 props 的属性，方便从 DOM 实例上获取 props
+ * @param {*} type
+ * @param {*} props
+ * @param {*} rootContainerInstance
+ * @param {*} hostContext
+ * @param {*} internalInstanceHandle
+ * @returns
+ */
 export function createInstance(
   type: string,
   props: Props,
@@ -254,15 +266,23 @@ export function createInstance(
     }
     parentNamespace = hostContextDev.namespace;
   } else {
+    // 确定该节点的命名空间
+    // 一般是HTML，http://www.w3.org/1999/xhtml
+    // svg，为 http://www.w3.org/2000/svg ，请参考：https://developer.mozilla.org/zh-CN/docs/Web/SVG
+    // MathML,为 http://www.w3.org/1998/Math/MathML，请参考：https://developer.mozilla.org/zh-CN/docs/Web/MathML
+    // 参考：https://blog.csdn.net/qq_26440903/article/details/52592501
     parentNamespace = ((hostContext: any): HostContextProd);
   }
+  // 创建 DOM 元素
   const domElement: Instance = createElement(
     type,
     props,
     rootContainerInstance,
     parentNamespace,
   );
+  // 创建指向 fiber 对象的属性，方便从 DOM 实例上获取 fiber 对象
   precacheFiberNode(internalInstanceHandle, domElement);
+  // 创建指向 props 的属性，方便从 DOM 实例上获取 props
   updateFiberProps(domElement, props);
   return domElement;
 }
@@ -274,6 +294,15 @@ export function appendInitialChild(
   parentInstance.appendChild(child);
 }
 
+/**
+ * 初始化事件监听
+ * @param {*} domElement
+ * @param {*} type
+ * @param {*} props
+ * @param {*} rootContainerInstance
+ * @param {*} hostContext
+ * @returns
+ */
 export function finalizeInitialChildren(
   domElement: Instance,
   type: string,
@@ -281,10 +310,24 @@ export function finalizeInitialChildren(
   rootContainerInstance: Container,
   hostContext: HostContext,
 ): boolean {
+  // 初始化 DOM 对象
+  // 1、对一些标签进行事件绑定/属性的特殊处理
+  // 2、对 DOM 对象内部属性进行初始化
   setInitialProperties(domElement, type, props, rootContainerInstance);
+  // 可以 foucus 的节点返回autoFocus的值，否则返回 false
   return shouldAutoFocusHostComponent(type, props);
 }
 
+/**
+ * 比较更新得出需要更新的 props 集合
+ * @param {*} domElement
+ * @param {*} type
+ * @param {*} oldProps
+ * @param {*} newProps
+ * @param {*} rootContainerInstance
+ * @param {*} hostContext
+ * @returns
+ */
 export function prepareUpdate(
   domElement: Instance,
   type: string,
@@ -308,6 +351,7 @@ export function prepareUpdate(
       validateDOMNesting(null, string, ownAncestorInfo);
     }
   }
+  // 计算出新老 props 的差异
   return diffProperties(
     domElement,
     type,
