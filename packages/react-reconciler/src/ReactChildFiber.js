@@ -396,6 +396,9 @@ function ChildReconciler(shouldTrackSideEffects) {
     return clone;
   }
 
+  /**
+   * 将 newFiber 节点
+   */
   function placeChild(
     newFiber: Fiber,
     lastPlacedIndex: number,
@@ -432,6 +435,7 @@ function ChildReconciler(shouldTrackSideEffects) {
   function placeSingleChild(newFiber: Fiber): Fiber {
     // This is simpler for the single child case. We only need to do a
     // placement for inserting new children.
+    // shouldTrackSideEffects是调用ChildReconciler时传入的参数（是否跟踪副作用）
     if (shouldTrackSideEffects && newFiber.alternate === null) {
       newFiber.effectTag = Placement;
     }
@@ -841,7 +845,7 @@ function ChildReconciler(shouldTrackSideEffects) {
   function reconcileChildrenArray(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
-    newChildren: Array<*>,
+    newChildren: Array<*>, // 待更新的数组节点
     expirationTime: ExpirationTime,
   ): Fiber | null {
     // This algorithm can't optimize by searching from both ends since we
@@ -863,6 +867,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     // If you change this code, also update reconcileChildrenIterator() which
     // uses the same algorithm.
 
+    // dev
     if (__DEV__) {
       // First, validate keys.
       let knownKeys = null;
@@ -875,23 +880,35 @@ function ChildReconciler(shouldTrackSideEffects) {
     let resultingFirstChild: Fiber | null = null;
     let previousNewFiber: Fiber | null = null;
 
+    // 数组中的第一个节点
     let oldFiber = currentFirstChild;
     let lastPlacedIndex = 0;
     let newIdx = 0;
     let nextOldFiber = null;
+    /**
+     * 复用节点的时候尽量减少数组遍历的次数，跳出循环的条件是，在遍历新老数组的过程中,找到第一个不能复用的节点
+     */
     for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
+      // 当要更新的节点的 index 大于 newIndex 时，说明 oldFiber 不在期望的位置上，需要处理oldFiber
       if (oldFiber.index > newIdx) {
         nextOldFiber = oldFiber;
         oldFiber = null;
       } else {
+        // 继续处理下一个兄弟节点
         nextOldFiber = oldFiber.sibling;
       }
+      // 复用或新建节点
       const newFiber = updateSlot(
-        returnFiber,
-        oldFiber,
-        newChildren[newIdx],
+        returnFiber, // 当前节点的父节点
+        oldFiber, // 旧的节点
+        newChildren[newIdx], // 待更新的新节点
         expirationTime,
       );
+      /**
+       * 说明key 不相同，节点不能复用，此时就跳出循环
+       * 如果不跳出循环，说明可以是相同的
+       * 也就是说当跳出循环的时候，我们可以知道截至目前，复用节点的个数，和不可复用节点的 index，
+       */
       if (newFiber === null) {
         // TODO: This breaks on empty slots like null children. That's
         // unfortunate because it triggers the slow path all the time. We need
@@ -933,7 +950,9 @@ function ChildReconciler(shouldTrackSideEffects) {
     if (oldFiber === null) {
       // If we don't have any more existing children we can choose a fast path
       // since the rest will all be insertions.
+      // 老节点已经被复用完，但是仍有部分新节点没有被创建
       for (; newIdx < newChildren.length; newIdx++) {
+        // 创建新节点
         const newFiber = createChild(
           returnFiber,
           newChildren[newIdx],
