@@ -381,6 +381,9 @@ function updateDOMProperties(
   }
 }
 
+/**
+ * 创建 DOM 元素
+ */
 export function createElement(
   type: string,
   props: Object,
@@ -391,14 +394,17 @@ export function createElement(
 
   // We create tags in the namespace of their parent container, except HTML
   // tags get no namespace.
+  // 获取 document 对象
   const ownerDocument: Document = getOwnerDocumentFromRootContainer(
     rootContainerElement,
   );
   let domElement: Element;
   let namespaceURI = parentNamespace;
   if (namespaceURI === HTML_NAMESPACE) {
+    // 根据 DOM 实例的标签获取相应的命名空间
     namespaceURI = getIntrinsicNamespace(type);
   }
+  // 如果是 html namespace
   if (namespaceURI === HTML_NAMESPACE) {
     if (__DEV__) {
       isCustomComponentTag = isCustomComponent(type, props);
@@ -434,12 +440,14 @@ export function createElement(
       const firstChild = ((div.firstChild: any): HTMLScriptElement);
       domElement = div.removeChild(firstChild);
     } else if (typeof props.is === 'string') {
+      // 如果需要更新的 props 里有 is 属性的话，那么创建该元素时，则为它添加「is」attribute
       // $FlowIssue `createElement` should be updated for Web Components
       domElement = ownerDocument.createElement(type, {is: props.is});
     } else {
       // Separate else branch instead of using `props.is || undefined` above because of a Firefox bug.
       // See discussion in https://github.com/facebook/react/pull/6896
       // and discussion in https://bugzilla.mozilla.org/show_bug.cgi?id=1276240
+      // 因为 Firefox 的一个 bug，所以需要特殊处理「is」属性
       domElement = ownerDocument.createElement(type);
       // Normally attributes are assigned in `setInitialDOMProperties`, however the `multiple` and `size`
       // attributes on `select`s needs to be added before `option`s are inserted.
@@ -450,6 +458,7 @@ export function createElement(
       // See https://github.com/facebook/react/issues/13222
       // and https://github.com/facebook/react/issues/14239
       if (type === 'select') {
+        // <select>标签需要在<option>子节点被插入之前，设置`multiple`和`size`属性
         const node = ((domElement: any): HTMLSelectElement);
         if (props.multiple) {
           node.multiple = true;
@@ -463,6 +472,9 @@ export function createElement(
       }
     }
   } else {
+    // SVG,MathML 的元素创建是需要指定命名空间 URI 的
+    // 创建一个具有指定的命名空间URI和限定名称的元素
+    // https://developer.mozilla.org/zh-CN/docs/Web/API/Document/createElementNS
     domElement = ownerDocument.createElementNS(namespaceURI, type);
   }
 
@@ -497,29 +509,38 @@ export function createTextNode(
   );
 }
 
+/**
+ * 初始化DOM 对象
+ * 1、对一些标签进行事件绑定/属性的特殊处理
+ * 2、对 DOM 对象内部属性进行初始化
+ */
 export function setInitialProperties(
   domElement: Element,
   tag: string,
   rawProps: Object,
   rootContainerElement: Element | Document,
 ): void {
+  // 判断是否是自定义的 DOM 标签
   const isCustomComponentTag = isCustomComponent(tag, rawProps);
   if (__DEV__) {
     validatePropertiesInDevelopment(tag, rawProps);
   }
 
   // TODO: Make sure that we check isMounted before firing any of these events.
+  // 确保在触发这些监听器触发之间，已经初始化了 event
   let props: Object;
   switch (tag) {
     case 'iframe':
     case 'object':
     case 'embed':
+      // React 自定义的绑定事件，暂时跳过
       trapBubbledEvent(TOP_LOAD, domElement);
       props = rawProps;
       break;
     case 'video':
     case 'audio':
       // Create listener for each media event
+      // 初始化 media 标签的监听器
       for (let i = 0; i < mediaEventTypes.length; i++) {
         trapBubbledEvent(mediaEventTypes[i], domElement);
       }
@@ -616,6 +637,20 @@ export function setInitialProperties(
 }
 
 // Calculate the diff between the two objects.
+/**
+ * 计算出新老 props 的差异
+ * 步骤：
+ *  1、根据不同标签节点提取新老 props 准备比较
+ *  2、第一次遍历老 props 把要删除的属性都设置为 null
+ *  3、第二次遍历新 props , 把新的props push 到updatePayload
+ *  4、最后生成updatePayload: [k1,null,k2,v2,k3,v3]
+ * @param {*} domElement
+ * @param {*} tag
+ * @param {*} lastRawProps
+ * @param {*} nextRawProps
+ * @param {*} rootContainerElement
+ * @returns
+ */
 export function diffProperties(
   domElement: Element,
   tag: string,
@@ -627,10 +662,14 @@ export function diffProperties(
     validatePropertiesInDevelopment(tag, nextRawProps);
   }
 
+  // 需要更新的 props 集合
   let updatePayload: null | Array<any> = null;
 
+  // old props
   let lastProps: Object;
+  // new props
   let nextProps: Object;
+  // 1、根据不同标签节点提取新老 props 准备比较
   switch (tag) {
     case 'input':
       lastProps = ReactDOMInputGetHostProps(domElement, lastRawProps);
@@ -655,36 +694,51 @@ export function diffProperties(
     default:
       lastProps = lastRawProps;
       nextProps = nextRawProps;
+      // 如果需要更新绑定 click 方法的话
       if (
         typeof lastProps.onClick !== 'function' &&
         typeof nextProps.onClick === 'function'
       ) {
         // TODO: This cast may not be sound for SVG, MathML or custom elements.
+        // 初始化 onclick 事件，以便兼容Safari移动端
         trapClickOnNonInteractiveElement(((domElement: any): HTMLElement));
       }
       break;
   }
 
+  // 断言，判断新属性，比如 style 是否正确赋值
   assertValidProps(tag, nextProps);
 
+  // 2、第一次遍历老 props 把要删除的属性都设置为 null
   let propKey;
   let styleName;
   let styleUpdates = null;
+  // 循环操作老 props 中的属性
+  // 将删除 props 加入到数组中
   for (propKey in lastProps) {
     if (
-      nextProps.hasOwnProperty(propKey) ||
-      !lastProps.hasOwnProperty(propKey) ||
-      lastProps[propKey] == null
+      nextProps.hasOwnProperty(propKey) || // 如果新 props 上有该属性的话
+      !lastProps.hasOwnProperty(propKey) || // 或者老 props 没有该属性的话（即原型链上的属性，比如：toString() ）
+      lastProps[propKey] == null // 或者老 props 的值为 'null' 的话
     ) {
+      // 跳过此次循环，也就是说不跳过此次循环的条件是该 if 为 false
+      // 新 props 没有该属性并且在老 props 上有该属性并且该属性不为 'null'/null
+      // 也就是说，能继续执行下面的代码的前提是：propKey 是删除的属性
       continue;
     }
+    // 能执行到这边，说明 propKey 是新增属性
+    // 对 style 属性进行操作，<div style={{height:30,}}></div>
     if (propKey === STYLE) {
+      // 获取老的 style 属性对象
       const lastStyle = lastProps[propKey];
+      // 遍历老 style 属性，如：height
       for (styleName in lastStyle) {
+        // 如果老 style 中本来就有 styleName 的话,则将其重置为''
         if (lastStyle.hasOwnProperty(styleName)) {
           if (!styleUpdates) {
             styleUpdates = {};
           }
+          // 重置(初始化)
           styleUpdates[styleName] = '';
         }
       }
@@ -708,19 +762,28 @@ export function diffProperties(
     } else {
       // For all other deleted properties we add it to the queue. We use
       // the whitelist in the commit phase instead.
+      // 将不符合以上条件的删除属性 propKey push 进 updatePayload 中.如：['className']
       (updatePayload = updatePayload || []).push(propKey, null);
     }
   }
+  // 3、第二次遍历新 props , 把新的props push 到updatePayload
   for (propKey in nextProps) {
+    // 获取新 prop 的值
     const nextProp = nextProps[propKey];
+    // 获取老 prop 的值（因为是根据新 props 遍历的，所以老 props 没有则为 undefined）
     const lastProp = lastProps != null ? lastProps[propKey] : undefined;
     if (
-      !nextProps.hasOwnProperty(propKey) ||
-      nextProp === lastProp ||
-      (nextProp == null && lastProp == null)
+      !nextProps.hasOwnProperty(propKey) || // 如果新 props 没有该 propKey 的话（ 比如原型链上的属性，toString() ）
+      nextProp === lastProp || // 或者新 value 等于老 value 的话（即没有更新）
+      (nextProp == null && lastProp == null) // 或者新老 value 均「宽松等于」 null 的话（'null'还有其他情况吗？）（即：没有更新）
     ) {
+      // 不往下执行
+      // 也就是说往下执行的条件是：新 props 有该 propKey 并且新老 value 不为 null 且不相等
+      // 即有更新的情况
       continue;
     }
+    // 能执行到这边，说明新 prop 的值与老 prop 的值不相同/新增 prop 并且有值
+    // 关于 style 属性的更新 <input style={{xxx:yyy}}/>
     if (propKey === STYLE) {
       if (__DEV__) {
         if (nextProp) {
@@ -729,8 +792,11 @@ export function diffProperties(
           Object.freeze(nextProp);
         }
       }
+
+      // 如果老 props 本来就有这个 prop 的话
       if (lastProp) {
         // Unset styles on `lastProp` but not on `nextProp`.
+        // 如果新 style 没有该 css 的话,将其置为''（也就是删掉该 css 属性）
         for (styleName in lastProp) {
           if (
             lastProp.hasOwnProperty(styleName) &&
@@ -739,34 +805,49 @@ export function diffProperties(
             if (!styleUpdates) {
               styleUpdates = {};
             }
+            // 将其置为''
             styleUpdates[styleName] = '';
           }
         }
         // Update styles that changed since `lastProp`.
+        // 这里才是更新 style 属性
         for (styleName in nextProp) {
           if (
+            // 新 props 有 style 并且与老 props 不一样的话，就更新 style 属性
             nextProp.hasOwnProperty(styleName) &&
             lastProp[styleName] !== nextProp[styleName]
           ) {
             if (!styleUpdates) {
               styleUpdates = {};
             }
+            // 更新 style
+            // 更新统一放在 styleUpdates 对象中
             styleUpdates[styleName] = nextProp[styleName];
           }
         }
       } else {
+        // 如果不是更新的 style 而是新增的话
         // Relies on `updateStylesByID` not mutating `styleUpdates`.
+
+        // 第一次初始化
         if (!styleUpdates) {
           if (!updatePayload) {
             updatePayload = [];
           }
+          // 将 'style'、null push 进数组 updatePayload 中
+          // ['style',null]
           updatePayload.push(propKey, styleUpdates);
         }
+        // styleUpdates 赋成新 style 的值
         styleUpdates = nextProp;
       }
     } else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
+      // __html
+      // 新 innerHTML
       const nextHtml = nextProp ? nextProp[HTML] : undefined;
+      // 老 innerHTML
       const lastHtml = lastProp ? lastProp[HTML] : undefined;
+      // push('__html','xxxxx')
       if (nextHtml != null) {
         if (lastHtml !== nextHtml) {
           (updatePayload = updatePayload || []).push(propKey, nextHtml);
@@ -776,10 +857,13 @@ export function diffProperties(
         // inserted already.
       }
     } else if (propKey === CHILDREN) {
+      // 子节点的更新
       if (
         lastProp !== nextProp &&
+        // 子节点是文本节点或数字
         (typeof nextProp === 'string' || typeof nextProp === 'number')
       ) {
+        // push 进数组中
         (updatePayload = updatePayload || []).push(propKey, '' + nextProp);
       }
     } else if (
@@ -789,25 +873,40 @@ export function diffProperties(
     ) {
       // Noop
     } else if (registrationNameModules.hasOwnProperty(propKey)) {
+      // 如果有绑定事件的话，如<div onClick=(()=>{ xxx })></div>
+
+      // 绑定事件里有回调函数的话
       if (nextProp != null) {
         // We eagerly listen to this even though we haven't committed yet.
         if (__DEV__ && typeof nextProp !== 'function') {
           warnForInvalidEventListener(propKey, nextProp);
         }
+        // 找到 document 对象，React 是将节点上绑定的事件统一委托到 document 上的
+        // 涉及到event 那块了，暂时跳过
+        // 参考https://www.cnblogs.com/Darlietoothpaste/p/10039127.html?utm_source=tuicool&utm_medium=referral
         ensureListeningTo(rootContainerElement, propKey);
       }
       if (!updatePayload && lastProp !== nextProp) {
         // This is a special case. If any listener updates we need to ensure
         // that the "current" props pointer gets updated so we need a commit
         // to update this element.
+        // 特殊的情况.
+        // 在监听器更新前，React 需要确保当前 props 的指针得到更新，
+        // 因此 React 需要一个 commit (即 updatePayload )，确保能更新该节点
+        // 因此 updatePayload 要不为 null
         updatePayload = [];
       }
     } else {
+      // 不符合以上的需要更新的新 propsKey
       // For any other property we always add it to the queue and then we
       // filter it out using the whitelist during the commit.
+      // 将新增的 propsKey push 进 updatePayload
+
+      // 在之后的 commit 阶段，会用白名单筛选出这些 props
       (updatePayload = updatePayload || []).push(propKey, nextProp);
     }
   }
+  // 将有关 style 的更新 push 进 updatePayload 中
   if (styleUpdates) {
     if (__DEV__) {
       validateShorthandPropertyCollisionInDev(styleUpdates, nextProps[STYLE]);
