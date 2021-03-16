@@ -133,12 +133,17 @@ import {resetChildFibers} from './ReactChildFiber';
 import {updateDeprecatedEventListeners} from './ReactFiberDeprecatedEvents';
 import {createScopeMethods} from './ReactFiberScope';
 
+/**
+ * 添加 Update 的 EffectTag
+ * @param {*} workInProgress
+ */
 function markUpdate(workInProgress: Fiber) {
   // Tag the fiber with an update effect. This turns a Placement into
   // a PlacementAndUpdate.
   workInProgress.effectTag |= Update;
 }
 
+// 添加 Ref 的 EffectTag
 function markRef(workInProgress: Fiber) {
   workInProgress.effectTag |= Ref;
 }
@@ -150,6 +155,7 @@ let updateHostText;
 if (supportsMutation) {
   // Mutation mode
 
+  // 插入子节点
   appendAllChildren = function(
     parent: Instance,
     workInProgress: Fiber,
@@ -158,9 +164,14 @@ if (supportsMutation) {
   ) {
     // We only have the top Fiber that was created but we need recurse down its
     // children to find all the terminal nodes.
+    // 获取该节点的第一个子节点
     let node = workInProgress.child;
+    // 当该节点有子节点时
     while (node !== null) {
+      // 如果是原生节点或 text 节点的话
       if (node.tag === HostComponent || node.tag === HostText) {
+        // 将node.stateNode挂载到 parent 上
+        // appendChild API:https://developer.mozilla.org/zh-CN/docs/Web/API/Node/appendChild
         appendInitialChild(parent, node.stateNode);
       } else if (enableFundamentalAPI && node.tag === FundamentalComponent) {
         appendInitialChild(parent, node.stateNode.instance);
@@ -169,20 +180,27 @@ if (supportsMutation) {
         // down its children. Instead, we'll get insertions from each child in
         // the portal directly.
       } else if (node.child !== null) {
+        // 如果子节点还有子子节点的话
+        // 如果是其他节点但是有子节点，那么转而去遍历它的子节点，直到找到dom原生节点或者是文本
+        // return 指向父节点
         node.child.return = node;
+        // 一直循环，设置return 属性，直到没有子节点
         node = node.child;
         continue;
       }
       if (node === workInProgress) {
         return;
       }
+      // 如果没有兄弟节点的话，返回至父节点
       while (node.sibling === null) {
         if (node.return === null || node.return === workInProgress) {
           return;
         }
         node = node.return;
       }
+      // 设置兄弟节点的 return 为父节点
       node.sibling.return = node.return;
+      // 遍历兄弟节点
       node = node.sibling;
     }
   };
@@ -199,7 +217,9 @@ if (supportsMutation) {
   ) {
     // If we have an alternate, that means this is an update and we need to
     // schedule a side-effect to do the updates.
+    // 旧props
     const oldProps = current.memoizedProps;
+    // 新老 props 对象引用的内存地址没有变过，即没有更新
     if (oldProps === newProps) {
       // In mutation mode, this is sufficient for a bailout because
       // we won't touch this node even if children changed.
@@ -208,13 +228,20 @@ if (supportsMutation) {
 
     // If we get updated because one of our children updated, we don't
     // have newProps so we'll have to reuse them.
+    // 如果该节点是因为子节点的更新而更新的,那么是没有新 props 需要更新的，但得复用新 props
+
     // TODO: Split the update API as separate for the props vs. children.
     // Even better would be if children weren't special cased at all tho.
+
+    // 获取 DOM 节点实例
     const instance: Instance = workInProgress.stateNode;
     const currentHostContext = getHostContext();
     // TODO: Experiencing an error where oldProps is null. Suggests a host
     // component is hitting the resume path. Figure out why. Possibly
     // related to `hidden`.
+
+    // 比较更新得出需要更新的 props 的集合：updatePayload: Array
+    // prepareUpdate代码位于 react-dom/src/client/ReactDOMHostConfig.js
     const updatePayload = prepareUpdate(
       instance,
       type,
@@ -224,13 +251,16 @@ if (supportsMutation) {
       currentHostContext,
     );
     // TODO: Type this specific to this type of component.
+    // 将需更新的 props 集合赋值到 更新队列上
     workInProgress.updateQueue = (updatePayload: any);
     // If the update payload indicates that there is a change or if there
     // is a new ref we mark this as an update. All the work is done in commitWork.
+    // 注意：即使是空数组也会加上 Update 的 EffectTag，如input/option/select/textarea
     if (updatePayload) {
       markUpdate(workInProgress);
     }
   };
+  // 判断文本节点是否需要更新
   updateHostText = function(
     current: Fiber,
     workInProgress: Fiber,
@@ -633,6 +663,13 @@ function cutOffTailIfNeeded(
   }
 }
 
+/**
+ * 更新不同的组件/节点
+ * @param {*} current
+ * @param {*} workInProgress
+ * @param {*} renderExpirationTime
+ * @returns
+ */
 function completeWork(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -641,17 +678,27 @@ function completeWork(
   const newProps = workInProgress.pendingProps;
 
   switch (workInProgress.tag) {
+    // 组件的初始状态
     case IndeterminateComponent:
+    // 懒(动态)加载组件
     case LazyComponent:
+    // 和 React.memo 类似
     case SimpleMemoComponent:
+    // 函数组件
     case FunctionComponent:
+    // React.forwardRef 组件  转发 ref 属性
     case ForwardRef:
+    // React.Fragment 组件
     case Fragment:
     case Mode:
+    // Profiler 组件，测量组件渲染带来的开销
     case Profiler:
+    // Context.Consumer 组件
     case ContextConsumer:
+    // React.memo 组件的更新
     case MemoComponent:
       return null;
+    // 类组件
     case ClassComponent: {
       const Component = workInProgress.type;
       if (isLegacyContextProvider(Component)) {
@@ -659,6 +706,7 @@ function completeWork(
       }
       return null;
     }
+    // 组件树根组件
     case HostRoot: {
       popHostContainer(workInProgress);
       popTopLevelLegacyContextObject(workInProgress);
@@ -680,11 +728,16 @@ function completeWork(
       updateHostContainer(workInProgress);
       return null;
     }
+    // 原生HTML标签(DOM节点)的更新，涉及到 Virtual DOM
     case HostComponent: {
       popHostContext(workInProgress);
       const rootContainerInstance = getRootHostContainer();
+      // 节点类型，比如<div>标签对应的 fiber 对象的 type 为 "div"
       const type = workInProgress.type;
+      // 非首次渲染
       if (current !== null && workInProgress.stateNode != null) {
+        // 更新 DOM 时进行 diff 比较
+        // 获取更新队列 workInProgress.updateQueue
         updateHostComponent(
           current,
           workInProgress,
@@ -701,11 +754,15 @@ function completeWork(
           }
         }
 
+        // ref 指向有变动，更新 ref
         if (current.ref !== workInProgress.ref) {
+          // 添加 Ref 的 EffectTag
           markRef(workInProgress);
         }
       } else {
+        // 首次更新
         if (!newProps) {
+          // 如果没有新 props 更新，但是执行到这里的话，可能是 React 内部出现了问题，报异常
           invariant(
             workInProgress.stateNode !== null,
             'We must have new props for new mounts. This error is likely ' +
@@ -720,6 +777,7 @@ function completeWork(
         // "stack" as the parent. Then append children as we go in beginWork
         // or completeWork depending on whether we want to add them top->down or
         // bottom->up. Top->down is faster in IE11.
+        // 服务端渲染相关
         let wasHydrated = popHydrationState(workInProgress);
         if (wasHydrated) {
           // TODO: Move this and createInstance step into the beginPhase
@@ -746,6 +804,12 @@ function completeWork(
             }
           }
         } else {
+          // 非服务端渲染
+
+          // 创建 DOM 实例
+          // 1、创建 DOM 元素
+          // 2、创建指向 fiber 对象的属性，方便从DOM 实例上获取 fiber 对象
+          // 3、创建指向 props 的属性，方便从 DOM 实例上获取 props
           let instance = createInstance(
             type,
             newProps,
@@ -754,6 +818,7 @@ function completeWork(
             workInProgress,
           );
 
+          // 插入子节点
           appendAllChildren(instance, workInProgress, false, false);
 
           // This needs to be set before we mount Flare event listeners
@@ -774,6 +839,8 @@ function completeWork(
           // (eg DOM renderer supports auto-focus for certain elements).
           // Make sure such renderers get scheduled for later work.
           if (
+            // 初始化事件监听
+            // 如果该节点能够自动聚焦的话
             finalizeInitialChildren(
               instance,
               type,
@@ -782,17 +849,21 @@ function completeWork(
               currentHostContext,
             )
           ) {
+            // 添加 EffectTag，方便在 commit 阶段 update
             markUpdate(workInProgress);
           }
         }
 
+        // 如果 ref 引用不为空的话
         if (workInProgress.ref !== null) {
           // If there is a ref on a host node we need to schedule a callback
+          // 添加 Ref 的 EffectTag
           markRef(workInProgress);
         }
       }
       return null;
     }
+    // 文本节点更新
     case HostText: {
       let newText = newProps;
       if (current && workInProgress.stateNode != null) {
@@ -827,6 +898,7 @@ function completeWork(
       }
       return null;
     }
+    // suspense （懒加载）组件的更新
     case SuspenseComponent: {
       popSuspenseContext(workInProgress);
       const nextState: null | SuspenseState = workInProgress.memoizedState;
@@ -968,14 +1040,17 @@ function completeWork(
       }
       return null;
     }
+    // ReactDOM.createPortal 节点的更新 (传送门，将节点渲染到DOM中的任意一个位置，例如弹窗的实现)
     case HostPortal:
       popHostContainer(workInProgress);
       updateHostContainer(workInProgress);
       return null;
+    // Context.Provider 组件的更新
     case ContextProvider:
       // Pop provider fiber
       popProvider(workInProgress);
       return null;
+    // 未完成/被中断 的 class 组件的更新
     case IncompleteClassComponent: {
       // Same as class component case. I put it down here so that the tags are
       // sequential to ensure this switch is compiled to a jump table.
@@ -985,6 +1060,8 @@ function completeWork(
       }
       return null;
     }
+    // SuspenseList 组件的更新
+    // SuspenseList 通过编排向用户显示这些组件的顺序，来帮助协调许多可以挂起的组件
     case SuspenseListComponent: {
       popSuspenseContext(workInProgress);
 
