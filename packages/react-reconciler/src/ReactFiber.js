@@ -656,16 +656,31 @@ export function createHostRootFiber(tag: RootTag): Fiber {
   return createFiber(HostRoot, null, null, mode);
 }
 
+/**
+ * 通过 type 和 props 来创建 fiber
+ * 会根据传进来的 type，分配一个 tag，这个tag就决定在beginWork函数中以怎样的方式处理组件
+ *
+ * 该方法映射了一个React元素到相对应fiber节点类型
+ * @param {*} type
+ * @param {*} key
+ * @param {*} pendingProps
+ * @param {*} owner
+ * @param {*} mode
+ * @param {*} expirationTime
+ * @returns
+ */
 export function createFiberFromTypeAndProps(
   type: any, // React$ElementType
   key: null | string,
-  pendingProps: any,
-  owner: null | Fiber,
+  pendingProps: any, // props
+  owner: null | Fiber, // null
   mode: TypeOfMode,
   expirationTime: ExpirationTime,
 ): Fiber {
   let fiber;
 
+  // 设置一个默认值
+  // FunctionComponent 没有再次设 fiberTag，所以它默认的 tag 就是 IndeterminateComponent
   let fiberTag = IndeterminateComponent;
   // The resolved type is set if we know what the final type will be. I.e. it's not lazy.
   let resolvedType = type;
@@ -697,6 +712,7 @@ export function createFiberFromTypeAndProps(
         break;
       case REACT_STRICT_MODE_TYPE:
         fiberTag = Mode;
+        // 加上StringMode
         mode |= StrictMode;
         break;
       case REACT_PROFILER_TYPE:
@@ -797,6 +813,13 @@ export function createFiberFromTypeAndProps(
   return fiber;
 }
 
+/**
+ * 创建 element 类型的 fiber 节点
+ * @param {*} element
+ * @param {*} mode
+ * @param {*} expirationTime
+ * @returns
+ */
 export function createFiberFromElement(
   element: ReactElement,
   mode: TypeOfMode,
@@ -809,6 +832,7 @@ export function createFiberFromElement(
   const type = element.type;
   const key = element.key;
   const pendingProps = element.props;
+  // 通过 type 和 props 来创建 fiber
   const fiber = createFiberFromTypeAndProps(
     type,
     key,
