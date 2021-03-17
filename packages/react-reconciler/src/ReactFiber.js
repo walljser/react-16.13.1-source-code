@@ -151,14 +151,12 @@ export type Fiber = {|
   elementType: any,
 
   // The resolved function/class/ associated with this fiber.
-  // Fiber类型信息
+  // Fiber的类型信息
   type: any,
 
   // The local state associated with this fiber.
-  // React 元素类型的引用，可以认为这个属性保存了当前 fiber 的状态（比如浏览器环境就是DOM节点）
+  // 保存的是 React 元素类型的引用，可以认为这个属性保存了当前 fiber 的状态（比如浏览器环境就是DOM节点）
   // 不同类型的实例都会记录在stateNode上
-  // ClassComponent对应Class实例
-  // FunctionComponent没有实例，stateNode = null
   // props、state更新了都会更新到stateNode上
   stateNode: any,
 
@@ -259,8 +257,9 @@ export type Fiber = {|
   // This is a pooled version of a Fiber. Every fiber that gets updated will
   // eventually have a pair. There are cases when we can clean up pairs to save
   // memory if we need to.
-  // 每次更新，会克隆出一个镜像fiber，diff产生的变化会记录在这个fiber上，alternate就是链接当前fiber tree和镜像fiber tree，用于断点恢复
+  // 每次更新，会克隆出一个镜像fiber，diff产生的变化会记录在这个fiber上，alternate就是链接当前fiber tree和镜像fiber tree
   // 这个镜像的fiber tree，就是work-in-progress tree
+  // 在work-in-progress tree的角度，这个alternate持有的对象就是自身的上一个状态
   alternate: Fiber | null,
 
   // 以下内容是调试相关，收集每个Fiber和子树的渲染时间

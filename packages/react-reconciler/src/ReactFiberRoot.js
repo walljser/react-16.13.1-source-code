@@ -53,11 +53,6 @@ type BaseFiberRootProperties = {|
     | Map<Thenable, Set<ExpirationTime>>
     | null,
 
-  // 任务优先级：
-  // 1. 没有提交的任务
-  // 2. 没有提交的被挂起的任务
-  // 3. 没有提交的可能被挂起的任务
-
   // 当前更新对应的过期时间
   finishedExpirationTime: ExpirationTime,
 

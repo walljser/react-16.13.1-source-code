@@ -227,7 +227,7 @@ function legacyRenderSubtreeIntoContainer(
   // member of intersection type." Whyyyyyy.
   // 取root对象，这里从container中取_reactRootContainer对象，我们传入的container一般都是普通DOM，没有_reactRootContainer，取不到root对象
   let root: RootType = (container._reactRootContainer: any);
-  let fiberRoot; // 将用来存储 Fiber 跟对象
+  let fiberRoot;
   if (!root) {
     // Initial mount
     // 初始化渲染
