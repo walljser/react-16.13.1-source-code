@@ -132,7 +132,7 @@ function legacyCreateRootFromDOMContainer(
     let warned = false;
     let rootSibling;
     // 开始循环，删除container容器中的所有子节点
-    // 为什么要删除？ 在react中，初始化渲染，react认为这些节点是不需要复用的。只有根节点需要复用
+    // 为什么要删除？ 在react初始化渲染时，react认为这些节点是不需要复用的。只有根节点需要复用
     // 这里有一个优化点：我们为了提升首屏加载的用户体验，有时需要在container中放置一些loading图或者骨架图，如下
     // ```
     // <div id="root">

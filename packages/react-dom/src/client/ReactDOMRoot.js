@@ -122,7 +122,7 @@ function createRootImpl(
   // react-reconciler/src/ReactFiberReconciler/createContainer()
   // 创建FiberRoot
   const root = createContainer(container, tag, hydrate, hydrationCallbacks);
-  // container[__reactContainere] = root.current
+  // container[__reactContainer$xxx] = root.current
   // root.current是rootFiber对象
   markContainerAsRoot(root.current, container);
   if (hydrate && tag !== LegacyRoot) {

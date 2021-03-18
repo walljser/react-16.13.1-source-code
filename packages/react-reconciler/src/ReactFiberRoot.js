@@ -45,7 +45,7 @@ type BaseFiberRootProperties = {|
   pendingChildren: any,
 
   // The currently active root fiber. This is the mutable root of the tree.
-  // 当前应用对应的Fiber对象，是 Root Fiber
+  // 当前应用组件树的根节点，即 rootFiber
   current: Fiber,
 
   pingCache:
@@ -160,9 +160,9 @@ function FiberRootNode(containerInfo, tag, hydrate) {
   }
 }
 
-// 创建根节点对应的 fiber 对象， FiberRoot
+// 创建整个应用的根节点， FiberRoot
 // FiberRoot:
-// * 整个应用的七点
+// * 整个应用的起点
 // * 包含应用挂载的目标节点，
 // * 记录整个应用更新过程的各种信息
 export function createFiberRoot(
@@ -185,13 +185,14 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
-  // 创建根节点对应的rootFiber：  createHostRootFiber() -> createFiber() -> new FiberNode()
+  // 创建组件树根节点对应的rootFiber：  createHostRootFiber() -> createFiber() -> new FiberNode()
+  // 这边为什么要交uninitializedFiber呢？（因为在初始化渲染中，没有上一次状态的 fiber 树，就用 uninitializedFiber 来代替上一次状态的 fiber 树，用于后面循环生成 workInProgress 树）
   const uninitializedFiber = createHostRootFiber(tag);
   // 为 FiberRoot 添加current属性为 rootFiber
   // 注意：这里的root是FiberRoot对象，uninitializedFiber是Fiber对象
   // root: FiberRoot
   // uninitlizedFiber: Fiber
-  // 以下两句是互相引用
+
   // FirberRoot.current = rootFiber
   root.current = uninitializedFiber;
   // rootFiber.stateNode = FiberRoot
