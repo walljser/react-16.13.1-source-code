@@ -295,6 +295,7 @@ export function trapClickOnNonInteractiveElement(node: HTMLElement) {
   node.onclick = noop;
 }
 
+// 初始化 DOM 对象的内部属性，如 style,dangersouslySetInnerHTML,children 特殊处理
 function setInitialDOMProperties(
   tag: string,
   domElement: Element,
@@ -302,12 +303,16 @@ function setInitialDOMProperties(
   nextProps: Object,
   isCustomComponentTag: boolean,
 ): void {
+  // 循环 nextProps
   for (const propKey in nextProps) {
+    // 原型链上的属性不作处理
     if (!nextProps.hasOwnProperty(propKey)) {
       continue;
     }
+    // 获取 prop 的值
     const nextProp = nextProps[propKey];
     if (propKey === STYLE) {
+      // 设置 style 属性
       if (__DEV__) {
         if (nextProp) {
           // Freeze the next style object so that we can assume it won't be
@@ -318,21 +323,25 @@ function setInitialDOMProperties(
       // Relies on `updateStylesByID` not mutating `styleUpdates`.
       setValueForStyles(domElement, nextProp);
     } else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
+      // 设置 dangerouslySetInnerHTML 属性
       const nextHtml = nextProp ? nextProp[HTML] : undefined;
       if (nextHtml != null) {
         setInnerHTML(domElement, nextHtml);
       }
     } else if (propKey === CHILDREN) {
+      // 设置子节点
       if (typeof nextProp === 'string') {
         // Avoid setting initial textContent when the text is empty. In IE11 setting
         // textContent on a <textarea> will cause the placeholder to not
         // show within the <textarea> until it has been focused and blurred again.
         // https://github.com/facebook/react/issues/6731#issuecomment-254874553
         const canSetTextContent = tag !== 'textarea' || nextProp !== '';
+        // 当 text 有内容时，初始化
         if (canSetTextContent) {
           setTextContent(domElement, nextProp);
         }
       } else if (typeof nextProp === 'number') {
+        // number 的话转成 string
         setTextContent(domElement, '' + nextProp);
       }
     } else if (
@@ -347,6 +356,7 @@ function setInitialDOMProperties(
       // adding a special case here, but then it wouldn't be emitted
       // on server rendering (but we *do* want to emit it in SSR).
     } else if (registrationNameModules.hasOwnProperty(propKey)) {
+      // 如果有绑定事件的话，如<div onClick=(()=>{ xxx })></div>
       if (nextProp != null) {
         if (__DEV__ && typeof nextProp !== 'function') {
           warnForInvalidEventListener(propKey, nextProp);
@@ -354,6 +364,7 @@ function setInitialDOMProperties(
         ensureListeningTo(rootContainerElement, propKey);
       }
     } else if (nextProp != null) {
+      // 为 DOM 节点设置属性值
       setValueForProperty(domElement, propKey, nextProp, isCustomComponentTag);
     }
   }
@@ -600,6 +611,7 @@ export function setInitialProperties(
 
   assertValidProps(tag, props);
 
+  // 初始化 DOM 对象的内部属性
   setInitialDOMProperties(
     tag,
     domElement,
@@ -638,6 +650,7 @@ export function setInitialProperties(
 
 // Calculate the diff between the two objects.
 /**
+ * diff算法
  * 计算出新老 props 的差异
  * 步骤：
  *  1、根据不同标签节点提取新老 props 准备比较
