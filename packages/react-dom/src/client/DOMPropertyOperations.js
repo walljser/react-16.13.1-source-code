@@ -125,6 +125,7 @@ export function getValueForAttribute(
  * @param {string} name
  * @param {*} value
  */
+// 为 DOM 节点设置属性值
 export function setValueForProperty(
   node: Element,
   name: string,
