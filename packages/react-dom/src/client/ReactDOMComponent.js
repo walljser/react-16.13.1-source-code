@@ -609,6 +609,7 @@ export function setInitialProperties(
       props = rawProps;
   }
 
+  // 判断新属性，比如 style 是否正确赋值
   assertValidProps(tag, props);
 
   // 初始化 DOM 对象的内部属性
@@ -620,6 +621,7 @@ export function setInitialProperties(
     isCustomComponentTag,
   );
 
+  // 对特殊的 DOM 标签进行最后的处理
   switch (tag) {
     case 'input':
       // TODO: Make sure we check if this is still unmounted or do any clean
@@ -642,6 +644,7 @@ export function setInitialProperties(
     default:
       if (typeof props.onClick === 'function') {
         // TODO: This cast may not be sound for SVG, MathML or custom elements.
+        // 初始化 onclick 事件，以便兼容Safari移动端
         trapClickOnNonInteractiveElement(((domElement: any): HTMLElement));
       }
       break;
