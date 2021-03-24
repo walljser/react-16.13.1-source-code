@@ -193,12 +193,13 @@ if (supportsMutation) {
       }
       // 如果没有兄弟节点的话，返回至父节点
       while (node.sibling === null) {
+        // 父节点为空 or 父节点为传进来的workInProgress，结束循环
         if (node.return === null || node.return === workInProgress) {
           return;
         }
         node = node.return;
       }
-      // 设置兄弟节点的 return 为父节点
+      // 设置兄弟节点的 return 设为与自身相同
       node.sibling.return = node.return;
       // 遍历兄弟节点
       node = node.sibling;
@@ -840,8 +841,7 @@ function completeWork(
           // Make sure such renderers get scheduled for later work.
           if (
             // 初始化事件监听
-            // 如果该节点能够自动聚焦的话
-            finalizeInitialChildren(
+            finalizeInitialChildren( // 如果该节点能够自动聚焦的话
               instance,
               type,
               newProps,

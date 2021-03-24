@@ -292,6 +292,7 @@ export function cancelWorkTimer(fiber: Fiber): void {
 }
 
 export function stopWorkTimer(fiber: Fiber): void {
+  // dev
   if (enableUserTimingAPI) {
     if (!supportsUserTiming || shouldIgnoreFiber(fiber)) {
       return;

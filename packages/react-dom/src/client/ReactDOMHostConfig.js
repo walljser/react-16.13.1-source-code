@@ -141,6 +141,7 @@ const STYLE = 'style';
 let eventsEnabled: ?boolean = null;
 let selectionInformation: null | SelectionInformation = null;
 
+// button, input, select, textarea可以autofocus
 function shouldAutoFocusHostComponent(type: string, props: Props): boolean {
   switch (type) {
     case 'button':

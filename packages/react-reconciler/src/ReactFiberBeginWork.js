@@ -1153,6 +1153,7 @@ function updateHostText(current, workInProgress) {
   }
   // Nothing to do here. This is terminal. We'll do the completion step
   // immediately after.
+  // 没有对 DOM 进行操作的地方，直接渲染出来即可
   return null;
 }
 
