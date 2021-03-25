@@ -253,6 +253,8 @@ function tryHydrate(fiber, nextInstance) {
   }
 }
 
+// 进行 hydrate 的操作，
+// 也就是判断能否复用服务端渲染的root内部已有的DOM节点
 function tryToClaimNextHydratableInstance(fiber: Fiber): void {
   if (!isHydrating) {
     return;
