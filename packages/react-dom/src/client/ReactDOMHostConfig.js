@@ -210,9 +210,12 @@ export function getPublicInstance(instance: Instance): * {
   return instance;
 }
 
+// 返回选中的DOM节点，一般为 document.activeElement || document.body
 export function prepareForCommit(containerInfo: Container): void {
+  // 标记React浏览器事件发射器已启用
   eventsEnabled = ReactBrowserEventEmitterIsEnabled();
   selectionInformation = getSelectionInformation();
+  // 标记React浏览器事件发射器已关闭
   ReactBrowserEventEmitterSetEnabled(false);
 }
 
