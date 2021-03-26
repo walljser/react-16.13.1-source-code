@@ -1106,7 +1106,9 @@ function performSyncWorkOnRoot(root) {
         handleError(root, thrownValue);
       }
     } while (true);
+    // 重置状态
     resetContextDependencies();
+    // 恢复之前暂存的执行上下文
     executionContext = prevExecutionContext;
     popDispatcher(prevDispatcher);
     if (enableSchedulerTracing) {
@@ -1707,8 +1709,8 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
         // Append all the effects of the subtree and this fiber onto the effect
         // list of the parent. The completion order of the children affects the
         // side-effect order.
-        // 子节点的完成顺序会影响副作用的顺序
 
+        // 串联 effect 链
         // 如果父节点没有挂载firstEffect的话，将当前节点的firstEffect赋值给父节点的firstEffect
         if (returnFiber.firstEffect === null) {
           returnFiber.firstEffect = workInProgress.firstEffect;
@@ -1716,7 +1718,7 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
         // 同上，根据当前节点的lastEffect，初始化父节点的lastEffect
         if (workInProgress.lastEffect !== null) {
           // 如果父节点的lastEffect有值的话，将nextEffect赋值
-          // 目的是串联Effect链
+          // 目的是串联 Effect 链
           if (returnFiber.lastEffect !== null) {
             returnFiber.lastEffect.nextEffect = workInProgress.firstEffect;
           }
@@ -1729,13 +1731,14 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
         // schedule our own side-effect on our own list because if end up
         // reusing children we'll schedule this effect onto itself since we're
         // at the end.
-        // 获取副作用标记
+        // 获取副作用标记 effectTag
         const effectTag = workInProgress.effectTag;
 
         // Skip both NoWork and PerformedWork tags when creating the effect
         // list. PerformedWork effect is read by React DevTools but shouldn't be
         // committed.
-        // 如果该副作用标记大于PerformedWork
+
+        // 如果该副作用标记大于PerformedWork，即不是NoEffect
         // PerformedWork为开始处理后
         if (effectTag > PerformedWork) {
           // 当父节点的lastEffect不为空的时候，将当前节点挂载到父节点的副作用链的最后
@@ -1814,6 +1817,8 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
   } while (workInProgress !== null);
 
   // We've reached the root.
+  // 当执行到这里的时候，说明遍历到了 root 节点，已完成遍历
+  // 更新workInProgressRootExitStatus的状态为「已完成」
   if (workInProgressRootExitStatus === RootIncomplete) {
     workInProgressRootExitStatus = RootCompleted;
   }
@@ -1846,8 +1851,10 @@ function resetChildExpirationTime(completedWork: Fiber) {
 
   // Bubble up the earliest expiration time.
   if (enableProfilerTimer && (completedWork.mode & ProfileMode) !== NoMode) {
+    // 分析模式
     // In profiling mode, resetChildExpirationTime is also used to reset
     // profiler durations.
+
     // 获取当前节点的实际 work 时长
     let actualDuration = completedWork.actualDuration;
     // 获取 fiber 树的 work 时长
@@ -1867,7 +1874,6 @@ function resetChildExpirationTime(completedWork: Fiber) {
     // 如果是这种情况的话，不应该冒泡赋给父节点
     // React 通过比较 子指针 来判断 fiber 是否被克隆
 
-    // 关于 alternate 的作用，请看：https://juejin.im/post/5d5aa4695188257573635a0d
     // 是否将 work 时间冒泡至父节点的依据是：
     // (1) 该 fiber 节点是否是第一次渲染
     // (2) 该 fiber 节点的子节点有更新
@@ -1877,7 +1883,8 @@ function resetChildExpirationTime(completedWork: Fiber) {
 
     // 获取当前节点的第一个子节点
     let child = completedWork.child;
-    // 当该子节点存在时，通过newChildExpirationTime来获取子节点、子子节点两者中优先级最高的那个expirationTime
+    // 当该子节点存在时，通过更新newChildExpirationTime来获取子节点、子子节点两者中优先级最高的那个expirationTime
+    // 循环寻找最高优先级
     while (child !== null) {
       const childUpdateExpirationTime = child.expirationTime;
       const childChildExpirationTime = child.childExpirationTime;
@@ -1896,7 +1903,9 @@ function resetChildExpirationTime(completedWork: Fiber) {
     completedWork.actualDuration = actualDuration;
     completedWork.treeBaseDuration = treeBaseDuration;
   } else {
+    // 逻辑同上
     let child = completedWork.child;
+    // 循环寻找最高优先级
     while (child !== null) {
       const childUpdateExpirationTime = child.expirationTime;
       const childChildExpirationTime = child.childExpirationTime;
@@ -1906,7 +1915,7 @@ function resetChildExpirationTime(completedWork: Fiber) {
       if (childChildExpirationTime > newChildExpirationTime) {
         newChildExpirationTime = childChildExpirationTime;
       }
-      child = child.sibling;
+      child = child.sibling; // 继续查找兄弟节点
     }
   }
 
@@ -1914,7 +1923,10 @@ function resetChildExpirationTime(completedWork: Fiber) {
 }
 
 function commitRoot(root) {
+  // 获取当前执行优先级
   const renderPriorityLevel = getCurrentPriorityLevel();
+  // 以最高优先级执行 commitRootImpl 方法
+  // ImmediatePriority 是最高优先级，表示立即执行 commitRootImpl 方法
   runWithPriority(
     ImmediatePriority,
     commitRootImpl.bind(null, root, renderPriorityLevel),
@@ -1922,7 +1934,15 @@ function commitRoot(root) {
   return null;
 }
 
+/**
+ * commit 阶段的主要工作分为三部分：
+ *   before mutation之前：主要做一些变量赋值，状态重置的工作。
+ *   before mutation阶段（执行 DOM 操作前）：遍历effectList并调用commitBeforeMutationEffects函数处理。
+ *   mutation阶段（执行 DOM 操作）
+ *   layout阶段（执行 DOM 操作后）
+ */
 function commitRootImpl(root, renderPriorityLevel) {
+  // root -> fiberRoot
   do {
     // `flushPassiveEffects` will call `flushSyncUpdateQueue` at the end, which
     // means `flushPassiveEffects` will sometimes result in additional
@@ -1930,8 +1950,11 @@ function commitRootImpl(root, renderPriorityLevel) {
     // no more pending effects.
     // TODO: Might be better if `flushPassiveEffects` did not automatically
     // flush synchronous work at the end, to avoid factoring hazards like this.
+
+    // 调用flushPassiveEffects执行完所有effect的任务
     flushPassiveEffects();
   } while (rootWithPendingPassiveEffects !== null);
+  // dev
   flushRenderPhaseStrictModeWarningsInDEV();
 
   invariant(
@@ -1939,12 +1962,17 @@ function commitRootImpl(root, renderPriorityLevel) {
     'Should not already be working.',
   );
 
+  // 调度完的任务
   const finishedWork = root.finishedWork;
+  // 调度完的优先级
   const expirationTime = root.finishedExpirationTime;
   if (finishedWork === null) {
+    // 该节点没有要更新的任务，直接返回
     return null;
   }
+  // 重置 调度完的任务
   root.finishedWork = null;
+  // 重置 调度完的优先级
   root.finishedExpirationTime = NoWork;
 
   invariant(
@@ -1973,8 +2001,10 @@ function commitRootImpl(root, renderPriorityLevel) {
     remainingExpirationTimeBeforeCommit,
   );
 
+  // 清除一些 workloop 阶段用到的全局变量，因为接下来要提交更新，这些全局变量用不到了
   if (root === workInProgressRoot) {
     // We can reset these now that they are finished.
+    // 重置全局变量
     workInProgressRoot = null;
     workInProgress = null;
     renderExpirationTime = NoWork;
@@ -1985,6 +2015,9 @@ function commitRootImpl(root, renderPriorityLevel) {
   }
 
   // Get the list of effects.
+  // 由于每个fiber的effect list只包含他的子孙节点，不包含他本身
+  // 因此这里需要将有effectTag的根节点插入到effect list尾部
+  // 这样才能保证有effect的fiber都在effect list中
   let firstEffect;
   if (finishedWork.effectTag > PerformedWork) {
     // A fiber's effect list consists only of its children, not itself. So if
@@ -1992,22 +2025,31 @@ function commitRootImpl(root, renderPriorityLevel) {
     // resulting list is the set that would belong to the root's parent, if it
     // had one; that is, all the effects in the tree including the root.
     if (finishedWork.lastEffect !== null) {
+      // 如果 root 节点本身也要更新的话，将其放到 effect 链的最后一个
       finishedWork.lastEffect.nextEffect = finishedWork;
+      // 将effect list赋值给firstEffect
       firstEffect = finishedWork.firstEffect;
     } else {
       firstEffect = finishedWork;
     }
   } else {
     // There is no effect on the root.
+    // 根节点没有effectTag
     firstEffect = finishedWork.firstEffect;
   }
 
+  // --- 这里之前都是数据：before mutation之前阶段 ---
+
+  // effect list 上第一个需要更新的 fiber 对象
   if (firstEffect !== null) {
+    // 暂存执行上下文
     const prevExecutionContext = executionContext;
+    // 给执行上下文添加一个CommitContext
     executionContext |= CommitContext;
     const prevInteractions = pushInteractions(root);
 
     // Reset this to null before calling lifecycles
+    // 在调用生命周期之前将此值重置为null
     ReactCurrentOwner.current = null;
 
     // The commit phase is broken into several sub-phases. We do a separate pass
@@ -2017,7 +2059,11 @@ function commitRootImpl(root, renderPriorityLevel) {
     // The first phase a "before mutation" phase. We use this phase to read the
     // state of the host tree right before we mutate it. This is where
     // getSnapshotBeforeUpdate is called.
+
+    // before mutation 子阶段开始
     startCommitSnapshotEffectsTimer();
+    // 更新当前选中的DOM节点，一般为 document.activeElement || document.body
+    // location: react-dom/src/client/ReactDOMHostConfig.js
     prepareForCommit(root.containerInfo);
     nextEffect = firstEffect;
     do {
@@ -2031,6 +2077,8 @@ function commitRootImpl(root, renderPriorityLevel) {
         }
       } else {
         try {
+          // 调用 classComponent 上的生命周期方法 getSnapshotBeforeUpdate
+          // getSnapshotBeforeUpdate官方文档：https://zh-hans.reactjs.org/docs/react-component.html#getsnapshotbeforeupdate
           commitBeforeMutationEffects();
         } catch (error) {
           invariant(nextEffect !== null, 'Should be working on an effect.');
@@ -2238,6 +2286,11 @@ function commitRootImpl(root, renderPriorityLevel) {
   return null;
 }
 
+/**
+ * 1. 处理DOM节点渲染/删除后的 autoFocus、blur 逻辑。
+ * 2. 调用getSnapshotBeforeUpdate生命周期钩子。
+ * 3. 调度useEffect。
+ */
 function commitBeforeMutationEffects() {
   while (nextEffect !== null) {
     const effectTag = nextEffect.effectTag;
@@ -2246,10 +2299,12 @@ function commitBeforeMutationEffects() {
       recordEffect();
 
       const current = nextEffect.alternate;
+      // 调用getSnapshotBeforeUpdate
       commitBeforeMutationEffectOnFiber(current, nextEffect);
 
       resetCurrentDebugFiberInDEV();
     }
+    // 调度useEffect
     if ((effectTag & Passive) !== NoEffect) {
       // If there are passive effects, schedule a callback to flush at
       // the earliest opportunity.
@@ -2421,12 +2476,19 @@ function invokePassiveEffectCreate(effect: HookEffect): void {
   effect.destroy = create();
 }
 
+/**
+ * 1. 调用该useEffect在上一次render时的销毁函数
+ * 2. 调用该useEffect在本次render时的回调函数
+ * 3. 如果存在同步任务，不需要等待下次事件循环的宏任务，提前执行他
+ */
 function flushPassiveEffectsImpl() {
   if (rootWithPendingPassiveEffects === null) {
     return false;
   }
+  // 从全局变量rootWithPendingPassiveEffects获取effectList
   const root = rootWithPendingPassiveEffects;
   const expirationTime = pendingPassiveEffectsExpirationTime;
+  // 重置状态
   rootWithPendingPassiveEffects = null;
   pendingPassiveEffectsExpirationTime = NoWork;
 
@@ -2447,10 +2509,14 @@ function flushPassiveEffectsImpl() {
     // Layout effects have the same constraint.
 
     // First pass: Destroy stale passive effects.
+    // pendingPassiveHookEffectsUnmount中保存了所有需要执行销毁的useEffect
+    // 向pendingPassiveHookEffectsUnmount数组内push数据的操作发生在layout阶段 commitLayoutEffectOnFiber方法内部的schedulePassiveEffects方法中。
     let unmountEffects = pendingPassiveHookEffectsUnmount;
     pendingPassiveHookEffectsUnmount = [];
     for (let i = 0; i < unmountEffects.length; i += 2) {
+      // pendingPassiveHookEffectsUnmount数组的索引i保存需要销毁的effect
       const effect = ((unmountEffects[i]: any): HookEffect);
+      // i+1 保存该effect对应的fiber。
       const fiber = ((unmountEffects[i + 1]: any): Fiber);
       const destroy = effect.destroy;
       effect.destroy = undefined;
@@ -2466,6 +2532,7 @@ function flushPassiveEffectsImpl() {
           resetCurrentDebugFiberInDEV();
         } else {
           try {
+            // 销毁函数存在则执行
             destroy();
           } catch (error) {
             invariant(fiber !== null, 'Should be working on an effect.');
